@@ -343,37 +343,156 @@ If "Will Bitcoin exceed $100k by June?" trades at 55% on Polymarket but 65% on K
 | **News Sentiment** | AI reasoning > crowd | Primary analyst & estimator | Low ($100+) | Moderate | Medium |
 | **Cross-Platform** | Price differences between markets | Market matching, normalization | High ($5k+) | Low | Medium |
 
+## The Whale: How "Theo" Made $85M
+
+The most famous Polymarket trader — a French national operating 11+ accounts (Fredi9999, Theo4, PrincessCaro, Michie, etc.) — wagered $70M+ on Trump's 2024 victory and profited **$85 million**. His accounts held 25% of Trump Electoral College contracts and 40%+ of popular vote contracts.
+
+**His edge was not AI but private polling** — he commissioned "neighbor polls" designed to capture the "shy Trump voter effect" that public polls systematically missed. He executed 1,600+ trades in 24-hour peak periods, mixing large ($4,302) and micro ($0.30-$187) orders to avoid detection.
+
+### The Bot Landscape (2025-2026)
+
+- **15%+ of Polymarket's daily volume** comes from automated strategies; up to 40% on some contracts
+- **14 of the 20 most profitable wallets** on the leaderboard are bots
+- **30%+ of wallets** use AI agents (per LayerHub analytics)
+- **Polystrat** (by Olas/Valory): 4,200+ trades in first month, returns up to 376% on individual trades
+- One wallet turned ~$300 into $400,000+ via latency arbitrage on ultra-short crypto contracts
+
+---
+
 ## Getting Started
 
 ### Prerequisites
 
 ```bash
-pip install py-clob-client   # Polymarket Python SDK
+pip install py-clob-client   # Polymarket Python SDK (v0.34.6+, Python 3.9+)
 ```
 
-### API Setup
+### API Architecture
 
-The Polymarket CLOB API has 3 authentication levels:
+| API | Base URL | Purpose |
+|-----|----------|---------|
+| **Gamma API** | `https://gamma-api.polymarket.com` | Market discovery & metadata |
+| **CLOB API** | `https://clob.polymarket.com` | Order book, trading, prices |
+| **Data API** | `https://data-api.polymarket.com` | Positions, trade history, P&L |
+| **WebSocket** | `wss://ws-subscriptions-clob.polymarket.com/ws/market` | Real-time updates |
+
+### Authentication Levels
 
 | Level | Capabilities | Requirements |
 |-------|-------------|--------------|
 | Level 0 | Read-only (prices, markets, order book) | None |
-| Level 1 | Generate API keys | Polygon wallet + signature |
-| Level 2 | Place/cancel orders, manage positions | API key + approval |
+| Level 1 | Generate API keys | Polygon wallet + EIP712 signature |
+| Level 2 | Place/cancel orders, manage positions | API key + allowance approval |
 
-### Key APIs
+### Contract Addresses (Polygon)
 
-- **Gamma API**: Market discovery (search active markets, metadata)
-- **CLOB API**: Trading (order book, place/cancel orders, prices)
-- **Data API**: Portfolio (positions, trade history, P&L)
-- **WebSocket**: Real-time price/order updates
+```
+USDC:              0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174
+Conditional Tokens: 0x4D97DCd97eC945f40cF65F87097ACe5EA0476045
+Exchange (1):      0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E
+Exchange (2):      0xC5d563A36AE78145C45a50134d48A1215220f80a
+Exchange (3):      0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296
+```
+
+All 3 exchange contracts need USDC + CTF allowance before trading.
+
+### Quick Start: Reading Market Data (No Auth)
+
+```python
+from py_clob_client.client import ClobClient
+
+client = ClobClient(host="https://clob.polymarket.com", chain_id=137)
+
+# Browse markets
+markets = client.get_simplified_markets()
+
+# Get order book for a specific token
+book = client.get_order_book(token_id="TOKEN_ID")
+
+# Get midpoint price
+mid = client.get_midpoint(token_id="TOKEN_ID")
+```
+
+### Quick Start: Placing Orders (Auth Required)
+
+```python
+from py_clob_client.client import ClobClient
+from py_clob_client.order import OrderArgs
+from py_clob_client.constants import OrderType
+
+client = ClobClient(
+    host="https://clob.polymarket.com",
+    key="YOUR_PRIVATE_KEY",
+    chain_id=137,
+    signature_type=0,  # 0=EOA, 1=Magic/proxy wallet
+    funder="YOUR_WALLET_ADDRESS"
+)
+
+# Limit order (GTC)
+order_args = OrderArgs(price=0.50, size=100, side="BUY", token_id="TOKEN_ID")
+signed_order = client.create_order(order_args)
+response = client.post_order(signed_order, OrderType.GTC)
+
+# Market order (FOK — fill or kill)
+from py_clob_client.order import MarketOrderArgs
+mo = MarketOrderArgs(token_id="TOKEN_ID", amount=25.0, side="BUY")
+signed = client.create_market_order(mo)
+response = client.post_order(signed, OrderType.FOK)
+```
+
+### Order Types
+
+| Type | Behavior | Use Case |
+|------|----------|----------|
+| **GTC** | Good-Till-Cancelled | Standard limit orders |
+| **FOK** | Fill-Or-Kill (entire qty or nothing) | Market orders |
+| **FAK** | Fill-And-Kill (partial fill OK) | Sweep available liquidity |
+| **postOnly** | Rejected if would cross spread | Market making (earn rebates) |
+
+### Fee Structure
+
+| Market Type | Maker Fee | Taker Fee | Notes |
+|------------|-----------|-----------|-------|
+| Most global markets | 0% | 0% | Still in effect for most categories |
+| 15-min crypto | Rebate | Dynamic (~1.56% max) | Taker fees redistributed to makers |
+| Sports | Rebate | ~0.44% max | Since Feb 2026 |
+| Polymarket US (CFTC) | -0.20% (rebate) | 0.30% | Regulated DCM |
+
+### Market Resolution
+
+Polymarket uses **UMA's Optimistic Oracle**:
+1. Anyone proposes an outcome (posts $750 USDC bond)
+2. 2-hour challenge period
+3. If unchallenged → market resolves, proposer gets bond + $2 reward
+4. If disputed twice → escalated to UMA tokenholder vote (48-72 hours)
 
 ### Useful Resources
 
 - [Polymarket Developer Docs](https://docs.polymarket.com/quickstart/overview)
-- [py-clob-client GitHub](https://github.com/Polymarket/py-clob-client)
+- [py-clob-client GitHub](https://github.com/Polymarket/py-clob-client) (934 stars, 336 forks)
 - [Polymarket/agents](https://github.com/Polymarket/agents) — official AI agent framework
 - [NautilusTrader Polymarket Integration](https://nautilustrader.io/docs/latest/integrations/polymarket/)
+- [Polymarket Analytics](https://polymarketanalytics.com/) — cross-platform comparison dashboard
+- [FinFeedAPI](https://www.finfeedapi.com/) — unified prediction market data API
+
+### Open-Source Bots
+
+| Repository | Description |
+|------------|-------------|
+| [Polymarket/agents](https://github.com/Polymarket/agents) | Official AI agent framework with RAG + LLM integration |
+| [Fully-Autonomous-AI-Trading-Bot](https://github.com/dylanpersonguy/Fully-Autonomous-Polymarket-AI-Trading-Bot) | Multi-model ensemble (GPT-4o, Claude, Gemini), 15+ risk checks |
+| [poly-maker](https://github.com/warproxxx/poly-maker) | Automated market making with Google Sheets config |
+| [polymarket-trading-bot](https://github.com/discountry/polymarket-trading-bot) | Beginner-friendly, gasless transactions, 89 unit tests |
+| [polymarket-kalshi-weather-bot](https://github.com/suislanchez/polymarket-kalshi-weather-bot) | GFS ensemble weather forecasts + Kelly sizing |
+| [polybot](https://github.com/ent0n29/polybot) | Strategy reverse-engineering, complete-set arbitrage |
+
+### Academic Papers
+
+| Paper | Key Finding |
+|-------|-------------|
+| [Arbitrage in Prediction Markets](https://arxiv.org/abs/2508.03474) (IMDEA, 2025) | $40M+ extracted from Polymarket arbitrage in one year |
+| [Kelly Criterion in Prediction Markets](https://arxiv.org/abs/2412.14144) (2024) | Mean beliefs differ from prices; half-Kelly recommended |
+| [Beating the Market with a Bad Model](https://www.sciencedirect.com/science/article/pii/S0169207022000292) (2022) | You can profit with an inferior model by decorrelating from market maker biases |
 
 ## Risk Disclaimer
 
@@ -404,3 +523,6 @@ The reported profit figures in this document come from self-reported sources and
 - [Unravelling the Probabilistic Forest: Arbitrage in Prediction Markets](https://arxiv.org/abs/2508.03474) — arXiv
 - [Polymarket Developer Docs](https://docs.polymarket.com/quickstart/overview)
 - [Polymarket HFT: How Traders Use AI](https://www.quantvps.com/blog/polymarket-hft-traders-use-ai-arbitrage-mispricing) — QuantVPS
+- [The French Whale Who Made $85M](https://fortune.com/2024/10/24/polymarket-crypto-trump-win-presidential-election/) — Fortune
+- [AI Agents Rewriting Prediction Market Trading](https://www.coindesk.com/tech/2026/03/15/ai-agents-are-quietly-rewriting-prediction-market-trading) — CoinDesk
+- [Systematic Edges in Prediction Markets](https://quantpedia.com/systematic-edges-in-prediction-markets/) — QuantPedia
