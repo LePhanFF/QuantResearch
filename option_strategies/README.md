@@ -116,6 +116,65 @@ This is where the wheel shines. High implied volatility means rich premiums, whi
 
 Buy & hold edges out the wheel over 5 years due to compounding, but the wheel offers better risk-adjusted returns with shallower drawdowns.
 
+## ETF Case Study: QQQM vs SPYM
+
+To evaluate the wheel on popular index ETFs, we ran the study calibrated to QQQM (Nasdaq-100 micro) and SPYM (S&P 500 micro) characteristics.
+
+| Ticker | Annual Return | Volatility | Price | Index |
+|--------|--------------|------------|-------|-------|
+| QQQM | 13% | 22% | $180 | Nasdaq-100 |
+| SPYM | 11% | 17% | $55 | S&P 500 |
+
+### Best Config per Period
+
+| Period | Ticker | Best Config | Ann. Return | Max Drawdown |
+|--------|--------|-------------|-------------|--------------|
+| 1Y | QQQM | ATM, 45 DTE, Roll @7d | 31.9% | 0.0% |
+| 1Y | SPYM | ATM, 60 DTE, Roll @7d | 28.3% | 0.0% |
+| 3Y | QQQM | ATM, 60 DTE, Roll @7d | 9.2% | -6.8% |
+| 3Y | SPYM | 10% OTM, 60 DTE, Hold | 5.6% | -6.7% |
+| 5Y | QQQM | ATM, 45 DTE, Roll @7d | 5.5% | -8.5% |
+| 5Y | SPYM | ATM, 45 DTE, Hold | 5.9% | -13.9% |
+
+### QQQM Aggregates
+
+| Strike | Avg Ann. Return | Avg Max DD | Win Rate |
+|--------|----------------|------------|----------|
+| ATM | 7.71% | -8.8% | 84.5% |
+| 3% OTM | 5.01% | -7.3% | 86.4% |
+| 5% OTM | 3.41% | -6.1% | 88.8% |
+| 10% OTM | 1.33% | -3.4% | 92.7% |
+
+Best roll method: **Roll @7d Before** (6.75% avg return, -5.6% avg DD)
+
+### SPYM Aggregates
+
+| Roll Method | Avg Ann. Return | Avg Max DD | Win Rate |
+|-------------|----------------|------------|----------|
+| Roll @7d Before | 6.75% | -5.6% | 88.0% |
+| Hold to Expiry | 4.73% | -8.5% | 92.6% |
+| Roll @50% Profit | 3.25% | -6.2% | 83.7% |
+| Roll @75% Profit | 2.73% | -5.4% | 88.1% |
+
+### QQQM Equity Curves
+![QQQM Equity Curves](results/QQQM_equity_comparison.png)
+
+QQQM's higher volatility (22%) generates richer premiums, but buy & hold wins decisively over 5 years due to the strong 13% annual drift. The wheel caps upside — ATM 30DTE Hold returns 5.9% ann. vs buy & hold's ~13%. Best used tactically in sideways periods.
+
+### SPYM Equity Curves
+![SPYM Equity Curves](results/SPYM_equity_comparison.png)
+
+Similar story for SPYM — the lower volatility (17%) means less premium income. Buy & hold dominates over the full period. The wheel's value here is as a risk-reduction overlay: smoother equity curve with shallower drawdowns, at the cost of capped upside.
+
+### ETF Takeaway
+
+The wheel strategy on broad index ETFs like QQQM and SPYM **underperforms buy & hold over long horizons** because these indices have strong positive drift that the wheel caps. However, the wheel provides:
+- **Lower drawdowns** (8-9% vs 20%+ for buy & hold)
+- **Steadier income** from premium collection
+- **Better risk-adjusted returns** in flat or declining markets
+
+Best use case: deploying the wheel on index ETFs **tactically during range-bound markets**, or as an income overlay for a portion of a portfolio.
+
 ## Recommendations
 
 | Scenario | Recommended Config |
