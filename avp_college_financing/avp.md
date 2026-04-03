@@ -11,7 +11,7 @@
 | Asset | Growth Rate | Loan/Withdrawal Cost | Tax Treatment |
 |---|---|---|---|
 | 529 Plan | **5–7%** | 0% for qualified expenses | **Tax-free** growth & withdrawals |
-| Life Insurance CV | **8–10%** | 0% loan rate | Tax-deferred; but loan reduces growing base |
+| Life Insurance CV | **8–10%** | **1% loan (2026) / 0% loan (2027+)** | Tax-deferred; loan reduces growing base |
 | Treasuries (brokerage) | ~4.2% pre-tax | N/A (interest income) | CA-exempt; fed taxable |
 | Stafford Loan | N/A | 6.5% cost | No deduction at high income |
 
@@ -55,9 +55,10 @@ Even after tax adjustment, life insurance at 8–10% beats 529 at 5–7%. **Pres
 | Treasury interest (after-tax) | ~$27,300/yr |
 | Stafford Unsubsidized | $5,500 / $6,500 / $7,500 / $7,500 per year |
 | Stafford rate | ~6.5% fixed |
-| Life insurance cash value | $200,000 |
+| Life insurance cash value | **$400,000** |
+| Life insurance max loan | **$334,000** |
 | Life insurance growth rate | **8% (conservative) / 10% (optimistic)** |
-| Life insurance loan rate | 0% (but reduces compounding base) |
+| Life insurance loan rate | **1% (2026) / 0% (2027 onward)** |
 | Parent PLUS rate | ~9.08% — **never use** |
 
 ---
@@ -132,14 +133,15 @@ Even after tax adjustment, life insurance at 8–10% beats 529 at 5–7%. **Pres
 | Brokerage principal | **Intact** | **Intact** |
 | Stafford interest (10-yr) | ~$9,800 | ~$9,800 |
 
-**Meanwhile, life insurance grows untouched:**
+**Meanwhile, life insurance grows untouched ($400K base):**
 
-| LI Growth Rate | LI Value After 4 Years | Growth |
+| LI Growth Rate | LI Value After 4 Years (2030) | Growth |
 |---|---|---|
-| 8% | $200,000 × 1.08⁴ = **$272,098** | +**$72,098** |
-| 10% | $200,000 × 1.10⁴ = **$292,820** | +**$92,820** |
+| 8% | $400,000 × 1.08⁴ = **$544,195** | +**$144,195** |
+| 10% | $400,000 × 1.10⁴ = **$585,640** | +**$185,640** |
 
-**By preserving LI, you gain $72K–$93K in tax-deferred growth over 4 years.**
+**By preserving LI, you gain $144K–$186K in tax-deferred growth over AVP's 4 years alone.**
+**Max loan capacity also grows** — more headroom as the policy appreciates.
 
 ---
 
@@ -156,10 +158,10 @@ Even after tax adjustment, life insurance at 8–10% beats 529 at 5–7%. **Pres
 | Stafford principal | $27,000 |
 | Accrued interest during school | ~$4,161 |
 | **Total Stafford payoff** | **~$31,161** |
-| LI value at graduation (8%) | $272,098 |
-| LI value at graduation (10%) | $292,820 |
-| Borrow $31,161 from LI | 0% loan rate |
-| **LI remaining after loan** | $240,937 (at 8%) / $261,659 (at 10%) |
+| LI value at graduation (8%) | $544,195 |
+| LI value at graduation (10%) | $585,640 |
+| Borrow $31,161 from LI at 0% (2030) | 0% loan rate (post-2027) |
+| **LI net after loan** | $513,034 (at 8%) / $554,479 (at 10%) |
 
 #### Outcome
 
@@ -169,11 +171,11 @@ Even after tax adjustment, life insurance at 8–10% beats 529 at 5–7%. **Pres
 | Student debt | **$0** | **$0** |
 | Credit history built | **4 years** | **4 years** |
 | Total interest cost | **$0** | **$0** |
-| LI value after payoff | $240,937 | $261,659 |
-| LI still grew by | +$40,937 | +$61,659 |
+| LI value after payoff | $513,034 | $554,479 |
+| LI still grew by | **+$113,034** | **+$154,479** |
 | Brokerage principal | **Intact** | **Intact** |
 
-**Even after paying off all Stafford debt, life insurance is STILL worth $41K–$62K more than today.** The 8–10% growth more than covers the $31K withdrawal.
+**Even after paying off all Stafford debt, life insurance grew by $113K–$154K** over 4 years. The $31K loan is tiny relative to the $400K+ value. At 0% loan rate (2027+), this is essentially free.
 
 ---
 
@@ -256,22 +258,24 @@ Actually, let me track correctly:
 
 ---
 
-## 7. Life Insurance Growth Projection (Untouched)
+## 7. Life Insurance Growth Projection ($400K Base)
 
-| Year | LI @ 8% | LI @ 10% |
-|---|---|---|
-| Today (2026) | $200,000 | $200,000 |
-| End Y1 | $216,000 | $220,000 |
-| End Y2 | $233,280 | $242,000 |
-| End Y3 | $251,942 | $266,200 |
-| End Y4 (grad) | **$272,098** | **$292,820** |
-| End 2034 (AVLP grad) | **$431,785** | **$518,748** |
+| Year | LI @ 8% | LI @ 10% | Max Loan (est.) |
+|---|---|---|---|
+| Today (2026) | $400,000 | $400,000 | $334,000 |
+| End Y1 (2027) | $432,000 | $440,000 | ~$361K |
+| End Y2 (2028) | $466,560 | $484,000 | ~$390K |
+| End Y3 (2029) | $503,885 | $532,400 | ~$421K |
+| End Y4 (2030, AVP grad) | **$544,195** | **$585,640** | ~$455K–$489K |
+| 2034 (AVLP grad) | **$863,570** | **$1,037,496** | ~$722K–$867K |
 
 **If life insurance is never touched for either child's education:**
-- At 8%: $200K → **$432K** by 2034 (+$232K)
-- At 10%: $200K → **$519K** by 2034 (+$319K)
+- At 8%: $400K → **$864K** by 2034 (+$464K)
+- At 10%: $400K → **$1.04M** by 2034 (+$637K)
 
-**This is why LI should be the last resort, not the first pull.**
+**Your life insurance could exceed $1M by the time AVLP graduates. This is why LI should be preserved at all costs.**
+
+> Note: Loan rate is 1% in 2026 only, then 0% from 2027 onward. If any LI borrowing is needed, defer to 2027+ when the rate drops to 0%.
 
 ---
 
@@ -294,6 +298,8 @@ Actually, let me track correctly:
 | 10% | $6,592 | $3,175–$3,530 more |
 
 **At every growth combination, pulling from LI costs more than pulling from 529.**
+
+> **Additional factor:** Y1 (2026) LI loan rate is 1%, not 0%. Borrowing in Y1 costs both the 1% interest AND the 8–10% lost growth. From 2027 onward, loan rate drops to 0%, but growth opportunity cost remains.
 
 ---
 
@@ -332,9 +338,10 @@ Actually, let me track correctly:
 | AVP 529 | Fully depleted — no surplus for AVLP |
 | AVLP 529 | $85,000 growing at 5–7% through 2030 |
 | Treasury interest | Fully available for AVLP starting Fall 2030 |
-| Life insurance (if S1) | $272K–$293K by 2030, untouched |
-| Life insurance (if S2) | $241K–$262K by 2030, still growing |
-| Life insurance by 2034 | **$432K–$519K** if never touched |
+| Life insurance (if S1, untouched) | **$544K–$586K** by 2030 |
+| Life insurance (if S2, $31K payoff) | **$513K–$555K** by 2030 |
+| Life insurance by 2034 | **$864K–$1.04M** if never touched again |
+| LI max loan by 2030 | ~$455K–$489K (grows with cash value) |
 
 See **avlp.md** for AVLP-specific scenarios.
 

@@ -33,9 +33,13 @@ AVLP starts college **4 years after AVP** (Fall 2030 vs. Fall 2026). This create
 | Treasury interest (after-tax) | ~$27,300/yr |
 | Treasury interest availability | **100% available for AVLP** (AVP done by Spring 2030) |
 | Stafford Unsubsidized rate | ~6.5% (est. for 2030 cohort) |
-| Life insurance cash value (2030) | **$272K–$293K** (grown at 8–10% from $200K over 8 yrs) |
+| Life insurance cash value (today) | **$400,000** |
+| Life insurance cash value (2030, untouched) | **$544K–$586K** (grown at 8–10% for 4 yrs) |
+| Life insurance cash value (2030, after AVP S2 payoff) | **$513K–$555K** |
+| Life insurance max loan (today) | $334,000 (grows with CV) |
 | Life insurance growth rate | **8% (conservative) / 10% (optimistic)** |
-| Life insurance loan rate | 0% (but reduces compounding base — costly at 8–10%) |
+| Life insurance loan rate | **1% (2026) / 0% (2027 onward)** |
+| Life insurance loan cost | 0% interest but reduces 8–10% compounding base |
 
 ---
 
@@ -85,7 +89,7 @@ COA inflated from $47,000 base at 3%/yr for 4 years (2026→2030):
 | AVLP 529 (grown at 7%) | $111,418 | 0% (tax-free) |
 | Treasury interest (full, AVP done) | $27,300/yr → $109,200 over 4 yrs | 0% (already earned) |
 | Stafford Unsubsidized | $27,000 (4-year max) | ~6.5% |
-| Life Insurance (2030 value at 8%) | ~$272,098 | 0% loan but loses 8–10% growth |
+| Life Insurance (2030 value at 8%) | ~$544,195 | 0% loan rate but loses 8–10% growth |
 | Parent PLUS Loan | Up to COA minus aid | ~9% — **never use** |
 
 **Key gap analysis (at 7% 529 growth):**
@@ -97,7 +101,7 @@ COA inflated from $47,000 base at 3%/yr for 4 years (2026→2030):
 - 529 + Treasury interest = $103,311 + $109,200 = **$212,511**
 - **Gap = $8,795** (still small — Stafford or tiny LI covers it)
 
-**Life insurance should be LAST RESORT** — at 8–10% growth, every $10K borrowed costs $800–$1,000/yr in lost compounding. By 2030, the LI is worth $272K–$293K and growing fast.
+**Life insurance should be LAST RESORT** — at 8–10% growth, every $10K borrowed costs $800–$1,000/yr in lost compounding. By 2030, the LI is worth **$544K–$586K** (from $400K today) and growing fast. By 2034 if untouched: **$864K–$1.04M**.
 
 ---
 
@@ -196,7 +200,7 @@ At 6.5% Stafford rate, the interest cost on $8,795 over 10 years is ~$3,200. Mea
 | 529 remaining | **$0** (fully depleted) |
 | Stafford | $8,795 |
 | Life insurance borrowed | **$0** |
-| LI preserved at 8% | Continues compounding to ~$432K by 2034 |
+| LI preserved at 8% | Continues compounding to ~$864K by 2034 |
 | Student debt | $8,795 (~$100/mo for 10 yrs) |
 | Brokerage principal | Intact |
 
@@ -281,8 +285,9 @@ Gap: $221,306 - $83,295 - $109,200 = **$28,811**
 | Brokerage principal | **$1,000,000 — fully preserved for 8 years** |
 | Both 529 plans | **Fully depleted — max tax-free extraction** |
 | Total student debt (both kids) | **$688** (AVLP only, trivial) |
-| Life insurance (2034 value at 8%) | **~$401K** (grew from $200K despite $31K AVP payoff) |
-| Life insurance (2034 value at 10%) | **~$488K** |
+| Life insurance (2034 value at 8%, S2) | **~$802K** (grew from $400K despite $31K AVP payoff) |
+| Life insurance (2034 value at 10%, S2) | **~$968K** |
+| Life insurance (2034, if untouched) | **$864K–$1.04M** |
 | Total external interest cost | **~$250** (on $688 Stafford) |
 
 ---
@@ -293,12 +298,12 @@ Gap: $221,306 - $83,295 - $109,200 = **$28,811**
 |---|---|
 | 529 compounds 4 extra years at 5–7% | +$18K–$26K in tax-free growth |
 | No Treasury interest competition | AVP frees up 100% by the time AVLP starts |
-| **Life insurance mostly preserved** | Only $31K used (AVP Stafford payoff); grows to **$401K–$488K by 2034** |
+| **Life insurance mostly preserved** | Only $31K used (AVP Stafford payoff); grows to **$802K–$968K by 2034** |
 | PLUS loans completely unnecessary | Saves ~9% annual interest |
 | Both 529 plans fully depleted | ~$208K extracted tax-free |
 | Brokerage earns 8 years of uninterrupted interest | ~$218,400 in after-tax Treasury income over 8 years |
 | **Brokerage principal after both kids graduate** | **$1,000,000 + reinvested excess interest** |
-| **Life insurance: your best long-term asset** | $200K → $401K–$519K over 8 years if preserved |
+| **Life insurance: your best long-term asset** | $400K → **$864K–$1.04M** over 8 years if preserved |
 
 ---
 
@@ -313,7 +318,7 @@ Gap: $221,306 - $83,295 - $109,200 = **$28,811**
 - At 7% 529 growth: gap is only **$688** (tiny Stafford)
 - At 5% 529 growth: gap is **$8,795** (still just Stafford)
 - Even a **20% crash** only needs $27K Stafford + $1.8K LI — life insurance stays intact
-- **Life insurance grows from $200K to $401K–$519K over 8 years if preserved**
+- **Life insurance grows from $400K to $864K–$1.04M over 8 years if preserved**
 
 > **The #1 rule: Every dollar you don't borrow from life insurance earns 8–10% annually. Protect it.**
 

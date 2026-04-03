@@ -14,7 +14,7 @@
 | Cash Brokerage Account | $1,000,000 | Currently in Treasuries; earmarked for education |
 | Federal Stafford Unsubsidized Loans | ~$5,500–$7,500/yr per student | Fixed rate (~6.53% for 2025-26 cohort, est. ~6.5% for 2026-27) |
 | Federal Parent PLUS Loans | Up to COA minus other aid | Fixed rate (~9.08% est.) |
-| Life Insurance Cash Value | ~$200,000 | 0% policy loan rate; last resort |
+| Life Insurance Cash Value | **~$400,000** | 8–10% growth; max loan $334K; 1% rate (2026), 0% (2027+); last resort |
 
 ## 2. Cost Assumptions
 
@@ -64,10 +64,11 @@
 - **FAFSA EFC impact:** High assets will result in high Expected Family Contribution. Cash brokerage counts as parent asset on FAFSA (~5.64% assessment rate). 529 plans owned by parents also assessed at 5.64%.
 
 ### Life Insurance Policy Loan
-- 0% loan rate is exceptional; however:
-  - Reduces death benefit dollar-for-dollar.
-  - If policy lapses with outstanding loan, the loan becomes taxable income.
-  - **Reserve as last resort** per your preference.
+- $400K cash value growing at 8–10% annually; max loan $334K.
+- Loan rate: **1% in 2026, 0% from 2027 onward.**
+- However, loans reduce the compounding base — at 8–10% growth, every $10K borrowed costs $800–$1,000/yr in lost growth.
+- If policy lapses with outstanding loan, the loan becomes taxable income.
+- **Reserve as last resort** — preserving this asset's compounding is more valuable than the 0% loan rate suggests.
 
 ---
 
@@ -290,7 +291,7 @@ If AVLP defers to Fall 2027:
 
 4. **Keep Treasuries laddered** to match tuition payment dates. This avoids forced selling at inopportune times and maintains the CA state tax exemption on interest.
 
-5. **The life insurance cash value ($200K at 0%) is a powerful emergency backstop** but correctly identified as last resort. Keep it intact unless a true emergency arises.
+5. **The life insurance cash value ($400K at 8–10% growth) is your best-performing asset.** At 0% loan rate (2027+) it looks "free" to borrow, but each $10K loan costs $800–$1,000/yr in lost compounding. Preserve it — by 2034 it could reach $864K–$1.04M untouched.
 
 6. **File FAFSA regardless** — you need it for Stafford eligibility even though need-based aid is unlikely.
 
