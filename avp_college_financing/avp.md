@@ -1,30 +1,68 @@
-# AVP College Financing — LI Front-Load, 529 Growth, Max Stafford, Deplete Smart
+# AVP College Financing — Growth-Aware Strategy: 529 (5–7%) vs Life Insurance (8–10%)
 
 **Prepared:** April 2026
 **Student:** AVP — UC Riverside, In-State, Fall 2026 Start
-**Strategy:** Front-load life insurance (0% cost) to let 529 compound at 7%; maximize Stafford loans for credit building; withdraw 529 smartly in later years to deplete by Year 4; use Treasury interest throughout.
+**Strategy:** Deplete 529 first (slower growth at 5–7%); preserve life insurance cash value (faster growth at 8–10%); maximize Stafford for credit building; Treasury interest fills gaps.
 
 ---
 
-## 1. Constraints & Assumptions
+## 1. Critical Insight — Growth Rate Changes Everything
+
+| Asset | Growth Rate | Loan/Withdrawal Cost | Tax Treatment |
+|---|---|---|---|
+| 529 Plan | **5–7%** | 0% for qualified expenses | **Tax-free** growth & withdrawals |
+| Life Insurance CV | **8–10%** | 0% loan rate | Tax-deferred; but loan reduces growing base |
+| Treasuries (brokerage) | ~4.2% pre-tax | N/A (interest income) | CA-exempt; fed taxable |
+| Stafford Loan | N/A | 6.5% cost | No deduction at high income |
+
+### Why Pull 529 First, NOT Life Insurance
+
+| If you pull $14,200 from... | Growth lost over 4 years | Opportunity cost |
+|---|---|---|
+| Life insurance (at 8%) | $14,200 × (1.08⁴ - 1) = **$5,117** | Higher |
+| Life insurance (at 10%) | $14,200 × (1.10⁴ - 1) = **$6,592** | Highest |
+| 529 (at 5%) | $14,200 × (1.05⁴ - 1) = **$3,062** | Lower |
+| 529 (at 7%) | $14,200 × (1.07⁴ - 1) = **$4,417** | Medium |
+
+**Pulling from life insurance costs you $1,000–$3,500 more in lost growth** than pulling from 529 — even though the loan is at 0%.
+
+> **Rule: Deplete the slower-growing asset first. Preserve the faster-growing one.**
+
+### But 529 Has Tax-Free Growth...
+
+True — 529 growth is tax-free while life insurance growth is tax-deferred. Adjusting for taxes:
+
+| Asset | Pre-Tax Growth | After-Tax Equivalent | Winner? |
+|---|---|---|---|
+| 529 at 5% | 5.0% | **5.0%** (tax-free) | |
+| 529 at 7% | 7.0% | **7.0%** (tax-free) | |
+| Life Ins. at 8% | 8.0% | **8.0%** (tax-deferred, 0% loan) | **Yes at 8%+** |
+| Life Ins. at 10% | 10.0% | **10.0%** (tax-deferred, 0% loan) | **Yes clearly** |
+
+Even after tax adjustment, life insurance at 8–10% beats 529 at 5–7%. **Preserve life insurance.**
+
+---
+
+## 2. Constraints & Assumptions
 
 | Parameter | Value |
 |---|---|
 | UC Riverside COA (Year 1) | $47,000 |
 | Annual COA inflation | 3% |
 | 529 Plan balance (today) | $85,000 |
-| 529 expected growth | **7% annual** (optimistic) |
+| 529 growth rate | **5% (conservative) / 7% (optimistic)** |
 | Brokerage account | $1,000,000 (principal untouched) |
-| Treasury interest (after-tax) | ~$27,300/yr (4.2% gross, CA-exempt, ~35% fed tax) |
-| Stafford Unsubsidized | $5,500 / $6,500 / $7,500 / $7,500 per year | 
+| Treasury interest (after-tax) | ~$27,300/yr |
+| Stafford Unsubsidized | $5,500 / $6,500 / $7,500 / $7,500 per year |
 | Stafford rate | ~6.5% fixed |
 | Life insurance cash value | $200,000 |
-| Life insurance loan rate | **0% — no repayment obligation, pay yourself** |
+| Life insurance growth rate | **8% (conservative) / 10% (optimistic)** |
+| Life insurance loan rate | 0% (but reduces compounding base) |
 | Parent PLUS rate | ~9.08% — **never use** |
 
 ---
 
-## 2. Four-Year Cost Schedule
+## 3. Four-Year Cost Schedule
 
 | Year | COA (3% inflation) |
 |---|---|
@@ -36,287 +74,270 @@
 
 ---
 
-## 3. Strategic Logic — Why Front-Load Life Insurance
+## 4. Revised Funding Priority (Growth-Aware)
 
-| Principle | Rationale |
-|---|---|
-| **Pull LI first (Y1)** | 0% cost of capital — literally free money. No repayment obligation. Lets 529 stay invested. |
-| **Let 529 grow Y1** | $85,000 × 1.07 = $90,950 after 1 year. That's **$5,950 in tax-free growth** you capture by waiting. |
-| **Maximize Stafford all 4 years** | $27,000 total at 6.5%. Builds AVP's credit history. Interest cost (~$9,800 over 10yr) is modest. |
-| **Back-load 529 withdrawals** | Small draws in Y2, heavier in Y3–Y4 after more compounding. Deplete to $0 by end of Y4. |
-| **Treasury interest fills gaps** | $27,300/yr available. Use fully in Y1–Y2, reduce in Y3–Y4 as 529 takes over. |
-
-### The Growth Math
-
-If 529 is untouched in Y1 and withdrawn smartly in Y2–Y4:
-
-| Timing | 529 Balance | Growth Captured |
+| Priority | Source | Rationale |
 |---|---|---|
-| Today (2026) | $85,000 | — |
-| Start Y2 (after 1yr growth) | $90,950 | +$5,950 |
-| During Y2–Y4 | Strategic withdrawals | Remaining balance continues growing at 7% |
-| End Y4 | **$0** | Total extracted: **$99,163** |
-| **Total tax-free growth captured** | | **$14,163** |
-
-By letting the 529 grow and withdrawing smartly, you extract **$99,163 from an $85,000 starting balance** — $14,163 in pure tax-free gains.
+| 1 | **529 — deplete first** | Slowest growth (5–7%); tax-free is great but lower return than LI |
+| 2 | Treasury interest | 0% marginal cost (already earned); ~4.2% pre-tax |
+| 3 | Stafford loans | 6.5% cost, but builds credit; take max every year |
+| 4 | Life insurance | **Last resort** — 8–10% growth is too valuable to sacrifice |
+| 5 | Parent PLUS | **Never** — 9.08% is worst cost of capital |
 
 ---
 
-## 4. Scenario Models
+## 5. Scenario Models
 
-### Scenario 1: LI Front-Load Y1 + Max Stafford + Smart 529 Depletion (Recommended)
+### Scenario 1: Front-Load 529 + Max Stafford + Treasury (Preserve LI Fully)
 
-**Year 1:** Life insurance covers the gap (no 529 touch). 529 grows to $90,950.
-**Years 2–4:** Begin 529 withdrawals, increasing each year. Treasury usage drops as 529 takes over. Deplete 529 to $0 by end of Y4.
+**Logic:** Deplete 529 as fast as possible in Y1–Y3 (lower balance = less growth lost). Max Stafford all 4 years. Treasury fills gaps. Life insurance **untouched** — let it compound at 8–10%.
 
-#### 529 Growth & Withdrawal Tracking
+#### At 529 = 5% Growth (Conservative)
 
-| Year | 529 Start Balance | Withdrawal | 529 End Balance | Growth |
-|---|---|---|---|---|
-| Y1 | $85,000 | $0 | $85,000 → $90,950 | +$5,950 |
-| Y2 | $90,950 | $14,610 | $76,340 → $81,684 | +$5,344 |
-| Y3 | $81,684 | $40,695 | $40,989 → $43,858 | +$2,869 |
-| Y4 | $43,858 | **$43,858** | **$0** | — |
+529 stays invested while being drawn. Remaining balance grows each year.
 
-**Total 529 extracted:** $0 + $14,610 + $40,695 + $43,858 = **$99,163**
-**Tax-free growth captured:** $99,163 - $85,000 = **$14,163**
+| Year | 529 Start | 529 Draw | 529 End→Grows | Treasury | Stafford | LI | Total |
+|---|---|---|---|---|---|---|---|
+| Y1 | $85,000 | $14,200 | $70,800→$74,340 | $27,300 | $5,500 | $0 | $47,000 |
+| Y2 | $74,340 | $14,610 | $59,730→$62,717 | $27,300 | $6,500 | $0 | $48,410 |
+| Y3 | $62,717 | $34,862 | $27,855→$29,248 | $7,500 | $7,500 | $0 | $49,862 |
+| Y4 | $29,248 | $29,248 | **$0** | $14,610 | $7,500 | $0 | $51,358 |
+| **Total** | | **$92,920** | | **$76,710** | **$27,000** | **$0** | **$196,630** |
 
-#### Year-by-Year Funding
+**529 growth captured at 5%:** $92,920 - $85,000 = **$7,920 tax-free**
 
-| Year | 529 | Treasury Interest | Stafford | Life Ins. | PLUS | Total |
-|---|---|---|---|---|---|---|
-| Y1 (2026-27) | $0 | $27,300 | $5,500 | $14,200 | $0 | $47,000 |
-| Y2 (2027-28) | $14,610 | $27,300 | $6,500 | $0 | $0 | $48,410 |
-| Y3 (2028-29) | $40,695 | $1,667 | $7,500 | $0 | $0 | $49,862 |
-| Y4 (2029-30) | $43,858 | $0 | $7,500 | $0 | $0 | $51,358 |
-| **Total** | **$99,163** | **$56,267** | **$27,000** | **$14,200** | **$0** | **$196,630** |
+#### At 529 = 7% Growth (Optimistic)
 
-#### Outcome
+| Year | 529 Start | 529 Draw | 529 End→Grows | Treasury | Stafford | LI | Total |
+|---|---|---|---|---|---|---|---|
+| Y1 | $85,000 | $14,200 | $70,800→$75,756 | $27,300 | $5,500 | $0 | $47,000 |
+| Y2 | $75,756 | $14,610 | $61,146→$65,426 | $27,300 | $6,500 | $0 | $48,410 |
+| Y3 | $65,426 | $34,862 | $30,564→$32,703 | $7,500 | $7,500 | $0 | $49,862 |
+| Y4 | $32,703 | $32,703 | **$0** | $11,155 | $7,500 | $0 | $51,358 |
+| **Total** | | **$96,375** | | **$73,255** | **$27,000** | **$0** | **$196,630** |
 
-| Metric | Value |
-|---|---|
-| 529 remaining | **$0** (fully depleted with max growth) |
-| 529 tax-free growth captured | **$14,163** |
-| Life insurance borrowed | $14,200 (Y1 only, 7.1% of cash value) |
-| Stafford loans | $27,000 (maximized — credit building) |
-| Treasury interest used | $56,267 (only 52% of available $109,200) |
-| **Treasury interest saved** | **$52,933** (reinvested in brokerage) |
-| PLUS loans | $0 |
-| Brokerage principal | **$1,000,000 intact** |
+**529 growth captured at 7%:** $96,375 - $85,000 = **$11,375 tax-free**
 
-#### Cost Analysis
+#### Outcome (Both Growth Rates)
 
-| Cost Item | Amount |
-|---|---|
-| Stafford interest (10-yr repayment) | ~$9,800 |
-| Life insurance interest | **$0** (0% rate) |
-| PLUS interest | $0 |
-| **Total interest cost** | **~$9,800** |
-| Tax savings from 529 growth ($14,163 × ~40% tax rate) | **~$5,665 saved** |
-| **Net cost after tax savings** | **~$4,135** |
+| Metric | 529 @ 5% | 529 @ 7% |
+|---|---|---|
+| 529 remaining | **$0** | **$0** |
+| 529 growth captured | $7,920 | $11,375 |
+| Life insurance borrowed | **$0** | **$0** |
+| Stafford loans (credit building) | $27,000 | $27,000 |
+| Treasury interest used | $76,710 | $73,255 |
+| Treasury interest saved | $32,490 | $35,945 |
+| PLUS loans | $0 | $0 |
+| Brokerage principal | **Intact** | **Intact** |
+| Stafford interest (10-yr) | ~$9,800 | ~$9,800 |
 
----
+**Meanwhile, life insurance grows untouched:**
 
-### Scenario 2: LI Front-Load Y1–Y2 + 529 Grows 2 Years (Maximum Growth)
+| LI Growth Rate | LI Value After 4 Years | Growth |
+|---|---|---|
+| 8% | $200,000 × 1.08⁴ = **$272,098** | +**$72,098** |
+| 10% | $200,000 × 1.10⁴ = **$292,820** | +**$92,820** |
 
-**Logic:** Use life insurance for both Y1 and Y2, letting 529 compound for 2 full years to $97,317. Then dump 529 aggressively in Y3–Y4.
-
-**Challenge:** After 2 years at 7%, the 529 ($97,317) is so large that deploying it all in Y3–Y4 while maxing Stafford is tight. Stafford must be reduced in Y3–Y4 to allow room for full 529 depletion.
-
-#### 529 Growth & Withdrawal Tracking
-
-| Year | 529 Start Balance | Withdrawal | 529 End Balance | Growth |
-|---|---|---|---|---|
-| Y1 | $85,000 | $0 | $85,000 → $90,950 | +$5,950 |
-| Y2 | $90,950 | $0 | $90,950 → $97,317 | +$6,367 |
-| Y3 | $97,317 | $49,862 | $47,455 → $50,777 | +$3,322 |
-| Y4 | $50,777 | **$50,777** | **$0** | — |
-
-**Total 529 extracted:** $49,862 + $50,777 = **$100,639**
-**Tax-free growth captured:** $100,639 - $85,000 = **$15,639**
-
-#### Year-by-Year Funding
-
-| Year | 529 | Treasury Interest | Stafford | Life Ins. | PLUS | Total |
-|---|---|---|---|---|---|---|
-| Y1 (2026-27) | $0 | $27,300 | $5,500 | $14,200 | $0 | $47,000 |
-| Y2 (2027-28) | $0 | $27,300 | $6,500 | $14,610 | $0 | $48,410 |
-| Y3 (2028-29) | $49,862 | $0 | $0 | $0 | $0 | $49,862 |
-| Y4 (2029-30) | $50,777 | $0 | $581 | $0 | $0 | $51,358 |
-| **Total** | **$100,639** | **$54,600** | **$12,581** | **$28,810** | **$0** | **$196,630** |
-
-#### Outcome
-
-| Metric | Value |
-|---|---|
-| 529 remaining | **$0** (fully depleted) |
-| 529 tax-free growth captured | **$15,639** (best of all scenarios) |
-| Life insurance borrowed | $28,810 (Y1+Y2) |
-| Stafford loans | $12,581 (reduced — Y3 skipped, Y4 minimal) |
-| Treasury interest used | $54,600 (50% of available) |
-| Treasury interest saved | $54,600 (reinvested) |
-| PLUS loans | $0 |
-
-#### Cost Analysis
-
-| Cost Item | Amount |
-|---|---|
-| Stafford interest (10-yr repayment on $12,581) | ~$4,600 |
-| Life insurance interest | **$0** |
-| Tax savings from 529 growth ($15,639 × ~40%) | **~$6,256 saved** |
-| **Net savings vs. S1** | **+$1,476 more 529 growth, -$14,419 less Stafford (less credit building)** |
-
-#### Trade-off vs. Scenario 1
-
-| | Scenario 1 | Scenario 2 | Difference |
-|---|---|---|---|
-| 529 growth captured | $14,163 | $15,639 | S2 wins by **$1,476** |
-| Stafford (credit building) | $27,000 | $12,581 | S1 wins by **$14,419** |
-| Life insurance borrowed | $14,200 | $28,810 | S1 lower by $14,610 |
-| Stafford interest cost | $9,800 | $4,600 | S2 saves $5,200 |
-| Tax savings | $5,665 | $6,256 | S2 saves $591 |
-
-**Verdict:** The extra 529 growth ($1,476) is marginal. Scenario 1 is better for credit building and uses less life insurance. However, Scenario 2 has lower total interest cost.
+**By preserving LI, you gain $72K–$93K in tax-deferred growth over 4 years.**
 
 ---
 
-### Scenario 3: LI Y1 + Max Stafford + Payoff at Graduation via LI (Credit + Zero Interest)
+### Scenario 2: Front-Load 529 + Stafford + LI Payoff at Graduation (Zero Debt)
 
-**Logic:** Combine the best of both worlds — front-load LI in Y1 to let 529 grow, maximize Stafford for credit building, then at graduation borrow from life insurance at 0% to pay off all Stafford debt. Net interest cost: $0.
+**Same as Scenario 1 during school**, but at graduation borrow from life insurance at 0% to pay off Stafford.
 
-#### 529 Growth & Withdrawal Tracking (Same as Scenario 1)
+**During school:** Identical to Scenario 1 (deplete 529, max Stafford, Treasury fills gaps, LI untouched).
 
-| Year | 529 Start Balance | Withdrawal | 529 End Balance |
-|---|---|---|---|
-| Y1 | $85,000 | $0 | $90,950 |
-| Y2 | $90,950 | $14,610 | $81,684 |
-| Y3 | $81,684 | $40,695 | $43,858 |
-| Y4 | $43,858 | $43,858 | **$0** |
-
-#### Year-by-Year Funding (Same as Scenario 1 During School)
-
-| Year | 529 | Treasury Interest | Stafford | Life Ins. | PLUS | Total |
-|---|---|---|---|---|---|---|
-| Y1 (2026-27) | $0 | $27,300 | $5,500 | $14,200 | $0 | $47,000 |
-| Y2 (2027-28) | $14,610 | $27,300 | $6,500 | $0 | $0 | $48,410 |
-| Y3 (2028-29) | $40,695 | $1,667 | $7,500 | $0 | $0 | $49,862 |
-| Y4 (2029-30) | $43,858 | $0 | $7,500 | $0 | $0 | $51,358 |
-| **Total** | **$99,163** | **$56,267** | **$27,000** | **$14,200** | **$0** | **$196,630** |
-
-#### At Graduation (Spring 2030) — Stafford Payoff Move
+**At graduation (Spring 2030):**
 
 | Step | Detail |
 |---|---|
 | Stafford principal | $27,000 |
-| Accrued interest during school | ~$4,161 (6.5% on disbursed amounts) |
+| Accrued interest during school | ~$4,161 |
 | **Total Stafford payoff** | **~$31,161** |
-| Borrow from life insurance | $31,161 at **0%** |
-| **Student walks away with:** | **$0 debt, 4 years of credit history** |
+| LI value at graduation (8%) | $272,098 |
+| LI value at graduation (10%) | $292,820 |
+| Borrow $31,161 from LI | 0% loan rate |
+| **LI remaining after loan** | $240,937 (at 8%) / $261,659 (at 10%) |
 
-#### Final Outcome
+#### Outcome
 
-| Metric | Value |
-|---|---|
-| 529 remaining | **$0** (fully depleted) |
-| 529 tax-free growth captured | **$14,163** |
-| Student debt | **$0** (Stafford paid off by LI) |
-| Total life insurance borrowed | $14,200 (Y1) + $31,161 (payoff) = **$45,361** |
-| Death benefit reduction | $45,361 (temporary) |
-| **Total interest cost** | **$0** (0% LI replaces 6.5% Stafford) |
-| Credit history built | **Yes — 4 years of Stafford history** |
-| Treasury interest saved | $52,933 |
-| Brokerage principal | **$1,000,000 intact** |
-
-#### Life Insurance Repayment
-
-| Source | Capacity | Time to Repay $45,361 |
+| Metric | LI @ 8% | LI @ 10% |
 |---|---|---|
-| Treasury interest (Summer 2030 gap before AVLP) | $27,300 partial year | ~2 months of full interest |
-| Post-both-kids (2034+) | $27,300/yr | ~1.7 years |
-| **Or never repay** | 0% cost; only death benefit reduces | No financial penalty |
+| 529 remaining | **$0** | **$0** |
+| Student debt | **$0** | **$0** |
+| Credit history built | **4 years** | **4 years** |
+| Total interest cost | **$0** | **$0** |
+| LI value after payoff | $240,937 | $261,659 |
+| LI still grew by | +$40,937 | +$61,659 |
+| Brokerage principal | **Intact** | **Intact** |
+
+**Even after paying off all Stafford debt, life insurance is STILL worth $41K–$62K more than today.** The 8–10% growth more than covers the $31K withdrawal.
 
 ---
 
-## 5. Scenario Comparison Matrix
+### Scenario 3: Aggressive 529 Depletion Y1–Y2, Minimize Treasury (Max Reinvestment)
 
-| Metric | S1: LI Y1 + Max Stafford (Rec.) | S2: LI Y1-Y2 + Max Growth | S3: S1 + LI Payoff (Best Overall) |
+**Logic:** Dump 529 heavily in Y1–Y2 (less time to compound = less growth lost). Minimize Treasury usage so more interest reinvests in brokerage. Treasury only kicks in Y3–Y4 after 529 is gone.
+
+#### At 529 = 5%
+
+| Year | 529 Draw | Treasury | Stafford | LI | Total |
+|---|---|---|---|---|---|
+| Y1 | $36,000 | $5,500 | $5,500 | $0 | $47,000 |
+| Y2 | $41,410¹ | $500 | $6,500 | $0 | $48,410 |
+| Y3 | $0 | $42,362 | $7,500 | $0 | $49,862 |
+| Y4 | $0 | $43,858 | $7,500 | $0 | $51,358 |
+| **Total** | **$77,410** | **$92,220** | **$27,000** | **$0** | **$196,630** |
+
+> ¹ At 5%, the 529 balance after Y1 draw: ($85,000-$36,000)×1.05 = $51,450. Can't withdraw $41,410 and deplete... let me recalculate properly.
+
+Actually, let me track correctly:
+- Y1: Draw $36,000. Remaining: $49,000 × 1.05 = $51,450
+- Y2: Draw all $51,450. Remaining: $0. Need from Treasury: $48,410 - $51,450 - $6,500 = -$9,540 → 529 exceeds need.
+
+529 after 1 year is $51,450 but Y2 only needs $48,410 - $6,500 = $41,910 from 529. So:
+- Y2: Draw $41,910. Remaining: $51,450 - $41,910 = $9,540 × 1.05 = $10,017
+- Y3: Draw $10,017. Need from Treasury: $49,862 - $10,017 - $7,500 = $32,345
+
+#### Corrected at 529 = 5%
+
+| Year | 529 Start | 529 Draw | 529 End→Grows | Treasury | Stafford | LI | Total |
+|---|---|---|---|---|---|---|---|
+| Y1 | $85,000 | $36,000 | $49,000→$51,450 | $5,500 | $5,500 | $0 | $47,000 |
+| Y2 | $51,450 | $41,910 | $9,540→$10,017 | $0 | $6,500 | $0 | $48,410 |
+| Y3 | $10,017 | $10,017 | **$0** | $32,345 | $7,500 | $0 | $49,862 |
+| Y4 | $0 | $0 | $0 | $43,858 | $7,500 | $0 | $51,358 |
+| **Total** | | **$87,927** | | **$81,703** | **$27,000** | **$0** | **$196,630** |
+
+**529 growth captured at 5%:** $87,927 - $85,000 = **$2,927** (less growth — depleted early)
+**Treasury interest saved:** $109,200 - $81,703 = **$27,497**
+
+#### Corrected at 529 = 7%
+
+| Year | 529 Start | 529 Draw | 529 End→Grows | Treasury | Stafford | LI | Total |
+|---|---|---|---|---|---|---|---|
+| Y1 | $85,000 | $36,000 | $49,000→$52,430 | $5,500 | $5,500 | $0 | $47,000 |
+| Y2 | $52,430 | $41,910 | $10,520→$11,256 | $0 | $6,500 | $0 | $48,410 |
+| Y3 | $11,256 | $11,256 | **$0** | $31,106 | $7,500 | $0 | $49,862 |
+| Y4 | $0 | $0 | $0 | $43,858 | $7,500 | $0 | $51,358 |
+| **Total** | | **$89,166** | | **$80,464** | **$27,000** | **$0** | **$196,630** |
+
+**529 growth captured at 7%:** $89,166 - $85,000 = **$4,166**
+
+#### Comparison: Early vs. Steady 529 Depletion
+
+| Strategy | 529 Growth at 5% | 529 Growth at 7% |
+|---|---|---|
+| S1 (steady Y1–Y4) | $7,920 | $11,375 |
+| S3 (aggressive Y1–Y2) | $2,927 | $4,166 |
+| **Difference** | S1 captures **$4,993 more** | S1 captures **$7,209 more** |
+
+**Verdict:** Slow, steady 529 depletion (Scenario 1) captures $5K–$7K more in growth. Front-loading depletion sacrifices too much compounding. **Scenario 1 is superior.**
+
+---
+
+## 6. Scenario Comparison Matrix
+
+| Metric | S1: Steady 529 (Rec.) | S2: S1 + LI Payoff (Best) | S3: Aggressive 529 |
 |---|---|---|---|
-| 529 depleted | **Yes** | **Yes** | **Yes** |
-| 529 growth captured | $14,163 | **$15,639** | $14,163 |
-| Tax-free savings | $5,665 | $6,256 | $5,665 |
-| Life insurance borrowed | $14,200 | $28,810 | $45,361 |
-| Stafford (credit building) | **$27,000** | $12,581 | **$27,000** |
-| Student debt at graduation | $27,000 | $12,581 | **$0** |
-| Total interest cost | $9,800 | $4,600 | **$0** |
-| Credit history | **Yes (4 yrs)** | Partial (2 yrs) | **Yes (4 yrs)** |
-| Treasury interest used | $56,267 | $54,600 | $56,267 |
-| Treasury interest saved | $52,933 | $54,600 | $52,933 |
-| Death benefit reduction | $14,200 | $28,810 | $45,361 |
+| **529 growth rate** | **5% / 7%** | **5% / 7%** | **5% / 7%** |
+| 529 depleted | Yes | Yes | Yes |
+| 529 growth captured | $7,920 / $11,375 | $7,920 / $11,375 | $2,927 / $4,166 |
+| Stafford (credit) | $27,000 | $27,000 | $27,000 |
+| Student debt at grad | $27,000 | **$0** | $27,000 |
+| LI borrowed | **$0** | $31,161 (at grad) | **$0** |
+| LI growth preserved | **$72K–$93K** | $41K–$62K (net after payoff) | **$72K–$93K** |
+| Treasury used | $73K–$77K | $73K–$77K | $80K–$82K |
+| Treasury saved | $32K–$36K | $32K–$36K | $27K–$29K |
+| Total interest cost | $9,800 | **$0** | $9,800 |
 | Brokerage principal | **Intact** | **Intact** | **Intact** |
-| Complexity | **Low** | Low | Medium |
 
 ---
 
-## 6. Treasury Interest — What Happens to the Savings?
+## 7. Life Insurance Growth Projection (Untouched)
 
-All scenarios use only ~$54–56K of the $109,200 available Treasury interest over 4 years. The **~$53K in unused Treasury interest** stays in the brokerage and compounds:
+| Year | LI @ 8% | LI @ 10% |
+|---|---|---|
+| Today (2026) | $200,000 | $200,000 |
+| End Y1 | $216,000 | $220,000 |
+| End Y2 | $233,280 | $242,000 |
+| End Y3 | $251,942 | $266,200 |
+| End Y4 (grad) | **$272,098** | **$292,820** |
+| End 2034 (AVLP grad) | **$431,785** | **$518,748** |
 
-| Year | Treasury Interest Generated | Used for AVP | Saved / Reinvested |
+**If life insurance is never touched for either child's education:**
+- At 8%: $200K → **$432K** by 2034 (+$232K)
+- At 10%: $200K → **$519K** by 2034 (+$319K)
+
+**This is why LI should be the last resort, not the first pull.**
+
+---
+
+## 8. Sensitivity Analysis — 529 Growth Rate Impact
+
+### Total 529 Extracted (Scenario 1 — Steady Depletion)
+
+| 529 Growth | Total Extracted | Growth Captured | Tax Savings (~40%) |
 |---|---|---|---|
-| Y1 | $27,300 | $27,300 | $0 |
-| Y2 | $27,300 | $27,300 | $0 |
-| Y3 | $27,300 | $1,667 | $25,633 |
-| Y4 | $27,300 | $0 | $27,300 |
-| **Total** | **$109,200** | **$56,267** | **$52,933** |
+| 5% | $92,920 | $7,920 | $3,168 |
+| 6% | $94,621 | $9,621 | $3,848 |
+| 7% | $96,375 | $11,375 | $4,550 |
 
-That $52,933 in saved interest, reinvested in Treasuries at 4.2%, generates ~$2,200/yr in additional income — further building the war chest for AVLP.
+### Life Insurance Opportunity Cost If Borrowed $14,200 in Y1
 
----
+| LI Growth | Growth Lost on $14,200 Over 4 Years | vs. 529 Growth Lost |
+|---|---|---|
+| 8% | $5,117 | $1,700–$2,055 more than 529 |
+| 9% | $5,834 | $2,417–$2,772 more |
+| 10% | $6,592 | $3,175–$3,530 more |
 
-## 7. Life Insurance — Capacity & Risk Check
-
-| Scenario | LI Used for AVP | Remaining for AVLP | Death Benefit Impact |
-|---|---|---|---|
-| S1 | $14,200 | $185,800 | Minimal (7.1%) |
-| S2 | $28,810 | $171,190 | Moderate (14.4%) |
-| S3 | $45,361 | $154,639 | Moderate (22.7%) |
-
-**All scenarios leave ample LI capacity for AVLP** (who needs $688–$28,811 per avlp.md scenarios).
-
-At 0% interest and no repayment obligation, life insurance is essentially a free bridge loan. The only real cost is the temporary death benefit reduction — assess based on your coverage needs.
+**At every growth combination, pulling from LI costs more than pulling from 529.**
 
 ---
 
-## 8. Recommendation
+## 9. Recommendation
 
-**Scenario 3 is the optimal play** if you want the best of everything:
+### Best Strategy: Scenario 2 (Steady 529 Depletion + LI Payoff at Graduation)
 
 | What You Get | How |
 |---|---|
-| 529 fully depleted | Smart back-loaded withdrawals, $14,163 tax-free growth captured |
-| Max Stafford for credit building | $27,000 over 4 years, 4 years of credit history |
-| Zero student debt at graduation | Life insurance at 0% pays off Stafford ($31K) |
-| Zero total interest cost | 0% LI replaces 6.5% Stafford — saves $9,800 |
-| Brokerage $1M intact | Only Treasury interest used (52% of it) |
-| $53K Treasury interest saved | Reinvested, compounds for AVLP years |
+| **529 fully depleted** | Steady withdrawals Y1–Y4, captures $8K–$11K tax-free growth |
+| **Max Stafford for credit** | $27,000 over 4 years, full credit history |
+| **Zero student debt** | LI payoff at graduation ($31K at 0%) |
+| **Zero interest cost** | 0% LI replaces 6.5% Stafford |
+| **LI still grows $41K–$62K** | Even after $31K payoff, LI is worth more than today |
+| **$1M brokerage intact** | Only ~$73K–$77K of Treasury interest used |
+| **$32K–$36K Treasury saved** | Reinvested for AVLP |
 
-**If you prefer simplicity**, go with **Scenario 1** — same 529 strategy, keep the $27K Stafford debt (manageable at ~$300/mo), and only $14,200 in life insurance.
+### If You Prefer Zero LI Usage: Scenario 1
 
-**Key principle:** Life insurance at 0% should always be pulled before touching 529 (which grows at 7%) or taking Stafford (which costs 6.5%). Every year the 529 stays invested, you capture ~$5,000–6,000 in tax-free growth.
+- Keep $27K Stafford debt (~$300/mo for 10 years)
+- LI grows the full $72K–$93K untouched
+- Total interest cost: ~$9,800 (modest)
+
+### Key Principle
+
+> **Life insurance at 8–10% growth is your best-performing asset. Protect it.**
+> **529 at 5–7% is your slowest-growing education asset. Spend it first.**
+> **Stafford at 6.5% is cheaper than sacrificing LI growth. Take the loans.**
 
 ---
 
-## 9. Impact on AVLP Planning
+## 10. Impact on AVLP Planning
 
-With AVP's 529 fully depleted and only $56K of $109K Treasury interest used:
-
-- **AVLP's 529** ($85,000) continues compounding untouched through 2030 → ~$111,418 at 7%
-- **Treasury interest** fully available for AVLP starting Fall 2030 (AVP graduates Spring 2030)
-- **Life insurance** $154,639–$185,800 remaining — more than enough for AVLP's $688–$28,811 need
-- **$52,933 in saved Treasury interest** provides additional buffer
+| Factor | Value |
+|---|---|
+| AVP 529 | Fully depleted — no surplus for AVLP |
+| AVLP 529 | $85,000 growing at 5–7% through 2030 |
+| Treasury interest | Fully available for AVLP starting Fall 2030 |
+| Life insurance (if S1) | $272K–$293K by 2030, untouched |
+| Life insurance (if S2) | $241K–$262K by 2030, still growing |
+| Life insurance by 2034 | **$432K–$519K** if never touched |
 
 See **avlp.md** for AVLP-specific scenarios.
 
 ---
 
-*Update this model when 2026-27 federal loan rates are published (May/June 2026) and when Treasury yields are confirmed for Q3 2026.*
+*Update when 2026-27 loan rates are published and actual 529/LI performance data is available.*
