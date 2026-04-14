@@ -207,6 +207,14 @@ WHEEL_TICKERS: list[WheelTicker] = [
         notes="AI + networking chips. Dividend-paying semi. High IV.",
     ),
     WheelTicker(
+        ticker="TSM", name="Taiwan Semiconductor", sector="Semiconductors",
+        instrument="stock", approx_price=380, multiplier=100,
+        notional_per_contract=38_000, avg_iv_rank=35,
+        options_liquidity="high", market_cap_b=1_970,
+        dividend_yield=1.0, quality_score=10,
+        notes="World's foundry. Makes chips for AAPL/NVDA/AMD. Geopolitical risk.",
+    ),
+    WheelTicker(
         ticker="AMD", name="Advanced Micro Devices", sector="Semiconductors",
         instrument="stock", approx_price=247, multiplier=100,
         notional_per_contract=24_700, avg_iv_rank=50,
