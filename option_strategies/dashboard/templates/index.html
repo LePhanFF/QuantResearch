@@ -436,7 +436,7 @@ function switchView(view) {
     const main = document.querySelector('.terminal-layout');
     pb.style.display = 'none'; bk.style.display = 'none'; main.style.display = 'none';
     if (view==='playbook') pb.style.display = 'block';
-    else if (view==='basket') { bk.style.display = 'block'; buildBasket(50000); }
+    else if (view==='basket') { bk.style.display = 'block'; buildBasket(); }
     else { main.style.display = 'flex'; render(); }
 }
 

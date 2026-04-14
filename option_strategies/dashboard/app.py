@@ -212,13 +212,17 @@ async def api_basket(size: int = 50000, max_dd: int = 20):
     import math
     import numpy as np
 
-    # Need scan data
+    # Need scan data — auto-scan if none exists
     global _latest_scan
     scan = _latest_scan
     if not scan:
         scan = _load_latest_from_disk()
     if not scan or not scan.get("tickers"):
-        return JSONResponse({"error": "Run a scan first (/api/scan)"}, status_code=400)
+        # Auto-trigger a scan
+        from datetime import datetime
+        results = run_scan()
+        _latest_scan = {"generated": datetime.now().isoformat(timespec="seconds"), "tickers": results}
+        scan = _latest_scan
 
     tickers = [t for t in scan["tickers"] if "error" not in t]
 
