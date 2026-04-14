@@ -19,6 +19,7 @@
             <button class="tab" onclick="switchView('sell-puts')">Sell Puts</button>
             <button class="tab" onclick="switchView('accumulate')">Accumulate</button>
             <button class="tab" onclick="switchView('stand-aside')">Stand Aside</button>
+            <button class="tab" onclick="switchView('basket')">Basket</button>
             <button class="tab" onclick="switchView('playbook')">Playbook</button>
         </div>
     </div>
@@ -106,7 +107,40 @@
                 <div class="empty-msg">Select a ticker to view options</div>
             </div>
         </div>
+        <!-- Fundamentals panel -->
+        <div id="fundamentals-panel" class="fundamentals-panel">
+            <div id="fundamentals-content" class="empty-msg">Select a ticker to view fundamentals</div>
+        </div>
     </div>
+</div>
+
+<!-- Basket Builder (hidden by default) -->
+<div id="basket-view" style="display:none" class="basket-panel">
+    <div class="basket-header">
+        <h2>PORTFOLIO BASKET BUILDER</h2>
+        <div class="basket-controls">
+            <button class="basket-size-btn" onclick="buildBasket(25000)">$25K</button>
+            <button class="basket-size-btn active" onclick="buildBasket(50000)">$50K</button>
+            <button class="basket-size-btn" onclick="buildBasket(100000)">$100K</button>
+            <button class="basket-size-btn" onclick="buildBasket(300000)">$300K</button>
+            <button class="basket-size-btn" onclick="buildBasket(1000000)">$1M</button>
+        </div>
+    </div>
+    <div class="basket-summary" id="basket-summary"></div>
+    <div class="basket-table-wrap">
+        <table class="basket-table" id="basket-table">
+            <thead><tr>
+                <th>#</th><th>Ticker</th><th>Sector</th><th>Strategy</th>
+                <th>Capital</th><th>Weight</th><th>Score</th>
+                <th>Yield</th><th>Value</th><th>Mom.</th><th>Risk</th>
+                <th>ROC%</th><th>RSI</th><th>IVR</th><th>DD%</th>
+            </tr></thead>
+            <tbody id="basket-body">
+                <tr><td colspan="15" class="empty-msg">Select a portfolio size above</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="basket-sectors" id="basket-sectors"></div>
 </div>
 
 <!-- Playbook (hidden) -->
@@ -365,9 +399,12 @@ function switchView(view) {
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
     event.target.classList.add('active');
     const pb = document.getElementById('playbook-view');
+    const bk = document.getElementById('basket-view');
     const main = document.querySelector('.terminal-layout');
-    if (view==='playbook') { pb.style.display='block'; main.style.display='none'; }
-    else { pb.style.display='none'; main.style.display='flex'; render(); }
+    pb.style.display = 'none'; bk.style.display = 'none'; main.style.display = 'none';
+    if (view==='playbook') pb.style.display = 'block';
+    else if (view==='basket') { bk.style.display = 'block'; buildBasket(50000); }
+    else { main.style.display = 'flex'; render(); }
 }
 
 async function selectTicker(ticker) {
@@ -389,6 +426,9 @@ async function selectTicker(ticker) {
 
     // Load option chain expirations
     loadExpirations(ticker);
+
+    // Load fundamentals
+    loadFundamentals(ticker);
 }
 
 async function loadChart(ticker) {
@@ -660,6 +700,140 @@ function renderChain() {
     // Auto-scroll to ATM row
     const atmRow = body.querySelector('.atm-row');
     if (atmRow) atmRow.scrollIntoView({block:'center', behavior:'smooth'});
+}
+
+// ── Fundamentals ──────────────────────────────────────────────
+async function loadFundamentals(ticker) {
+    const el = document.getElementById('fundamentals-content');
+    el.innerHTML = '<div class="empty-msg"><div class="spinner"></div>Loading fundamentals...</div>';
+    try {
+        const r = await fetch(`/api/fundamentals/${ticker}`);
+        const d = await r.json();
+        renderFundamentals(d);
+    } catch(e) {
+        el.innerHTML = '<div class="empty-msg">Failed to load</div>';
+    }
+}
+
+function renderFundamentals(d) {
+    const p = d.profile, v = d.valuation, pr = d.profitability, g = d.growth, b = d.balance_sheet, dv = d.dividends;
+    function fv(val, suffix='') { return val != null ? val + suffix : '-'; }
+
+    let newsHtml = '';
+    if (d.news && d.news.length > 0) {
+        newsHtml = d.news.map(n => {
+            const link = n.link ? `<a href="${n.link}" target="_blank" class="news-link">${n.title || 'Untitled'}</a>` : (n.title || 'Untitled');
+            return `<div class="news-item">${link}<span class="news-meta">${n.publisher} ${n.date ? '| ' + n.date.split('T')[0] : ''}</span></div>`;
+        }).join('');
+    } else {
+        newsHtml = '<div class="dim">No recent news</div>';
+    }
+
+    document.getElementById('fundamentals-content').innerHTML = `
+    <div class="fund-grid">
+        <div class="fund-section">
+            <h4>COMPANY PROFILE</h4>
+            <div class="fund-summary">${p.summary ? p.summary.substring(0,300) + (p.summary.length > 300 ? '...' : '') : '-'}</div>
+            <div class="d-row"><span>Sector</span><span class="mono">${p.sector}</span></div>
+            <div class="d-row"><span>Industry</span><span class="mono">${p.industry}</span></div>
+            <div class="d-row"><span>Employees</span><span class="mono">${p.employees ? Number(p.employees).toLocaleString() : '-'}</span></div>
+        </div>
+        <div class="fund-section">
+            <h4>VALUATION</h4>
+            <div class="d-row"><span>Market Cap</span><span class="mono">$${fv(v.market_cap_b,'B')}</span></div>
+            <div class="d-row"><span>P/E (trailing)</span><span class="mono">${fv(v.trailing_pe)}</span></div>
+            <div class="d-row"><span>P/E (forward)</span><span class="mono">${fv(v.forward_pe)}</span></div>
+            <div class="d-row"><span>PEG Ratio</span><span class="mono">${fv(v.peg_ratio)}</span></div>
+            <div class="d-row"><span>Price/Book</span><span class="mono">${fv(v.price_to_book)}</span></div>
+            <div class="d-row"><span>EV/EBITDA</span><span class="mono">${fv(v.ev_to_ebitda)}</span></div>
+        </div>
+        <div class="fund-section">
+            <h4>PROFITABILITY</h4>
+            <div class="d-row"><span>Gross Margin</span><span class="mono">${fv(pr.gross_margin_pct,'%')}</span></div>
+            <div class="d-row"><span>Operating Margin</span><span class="mono">${fv(pr.operating_margin_pct,'%')}</span></div>
+            <div class="d-row"><span>Profit Margin</span><span class="mono">${fv(pr.profit_margin_pct,'%')}</span></div>
+            <div class="d-row"><span>ROE</span><span class="mono">${fv(pr.roe_pct,'%')}</span></div>
+            <div class="d-row"><span>ROA</span><span class="mono">${fv(pr.roa_pct,'%')}</span></div>
+            <h4 style="margin-top:8px">GROWTH</h4>
+            <div class="d-row"><span>Revenue Growth</span><span class="mono ${(g.revenue_growth_pct||0)>0?'green':'red'}">${fv(g.revenue_growth_pct,'%')}</span></div>
+            <div class="d-row"><span>Earnings Growth</span><span class="mono ${(g.earnings_growth_pct||0)>0?'green':'red'}">${fv(g.earnings_growth_pct,'%')}</span></div>
+        </div>
+        <div class="fund-section">
+            <h4>BALANCE SHEET</h4>
+            <div class="d-row"><span>Total Cash</span><span class="mono">$${fv(b.total_cash_b,'B')}</span></div>
+            <div class="d-row"><span>Total Debt</span><span class="mono">$${fv(b.total_debt_b,'B')}</span></div>
+            <div class="d-row"><span>Debt/Equity</span><span class="mono">${fv(b.debt_to_equity)}</span></div>
+            <div class="d-row"><span>Current Ratio</span><span class="mono">${fv(b.current_ratio)}</span></div>
+            <div class="d-row"><span>Free Cash Flow</span><span class="mono">$${fv(b.free_cash_flow_b,'B')}</span></div>
+            <div class="d-row"><span>Op. Cash Flow</span><span class="mono">$${fv(b.operating_cash_flow_b,'B')}</span></div>
+            <h4 style="margin-top:8px">DIVIDENDS</h4>
+            <div class="d-row"><span>Yield</span><span class="mono">${fv(dv.dividend_yield_pct,'%')}</span></div>
+            <div class="d-row"><span>Payout Ratio</span><span class="mono">${fv(dv.payout_ratio_pct,'%')}</span></div>
+            <div class="d-row"><span>Annual Dividend</span><span class="mono">$${fv(dv.annual_dividend)}</span></div>
+        </div>
+    </div>
+    <div class="fund-news">
+        <h4>NEWS</h4>
+        ${newsHtml}
+    </div>`;
+}
+
+// ── Basket Builder ────────────────────────────────────────────
+async function buildBasket(size) {
+    document.querySelectorAll('.basket-size-btn').forEach(b => {
+        b.classList.toggle('active', b.textContent.includes(size >= 1000000 ? '1M' : '$'+(size/1000)+'K'));
+    });
+    document.getElementById('basket-body').innerHTML = '<tr><td colspan="15" class="empty-msg"><div class="spinner"></div>Building optimal basket...</td></tr>';
+    try {
+        const r = await fetch(`/api/basket?size=${size}`);
+        const d = await r.json();
+        if (d.error) { document.getElementById('basket-body').innerHTML = `<tr><td colspan="15" class="empty-msg">${d.error}</td></tr>`; return; }
+        renderBasket(d);
+    } catch(e) {
+        document.getElementById('basket-body').innerHTML = '<tr><td colspan="15" class="empty-msg">Failed</td></tr>';
+    }
+}
+
+function renderBasket(d) {
+    // Summary
+    document.getElementById('basket-summary').innerHTML = `
+        <div class="strip-item"><span class="strip-label">ACCOUNT</span><span class="strip-val">$${(d.account_size/1000).toFixed(0)}K</span></div>
+        <div class="strip-item"><span class="strip-label">DEPLOYED</span><span class="strip-val">${d.deployed_pct}%</span></div>
+        <div class="strip-item"><span class="strip-label">CASH RESERVE</span><span class="strip-val green">$${Number(d.cash_reserve).toLocaleString()}</span></div>
+        <div class="strip-item"><span class="strip-label">POSITIONS</span><span class="strip-val">${d.positions}</span></div>
+        <div class="strip-item"><span class="strip-label">WGTD YIELD</span><span class="strip-val blue">${d.weighted_yield_pct}%</span></div>
+        <div class="strip-item"><span class="strip-label">WGTD ROC</span><span class="strip-val green">${d.weighted_roc_pct}%</span></div>
+        <div class="strip-item"><span class="strip-label">EST DRAWDOWN</span><span class="strip-val ${d.est_drawdown_pct > 15 ? 'red' : 'yellow'}">${d.est_drawdown_pct}%</span></div>
+    `;
+
+    // Table
+    document.getElementById('basket-body').innerHTML = d.allocations.map((a, i) => {
+        const sigCls = a.strategy === 'SELL_PUT' ? 'sell-put' : 'buy-stock';
+        return `<tr class="trow">
+            <td class="mono dim">${i+1}</td>
+            <td class="sym">${a.ticker}</td>
+            <td class="mono dim">${a.sector}</td>
+            <td><span class="sig ${sigCls}">${a.strategy.replace(/_/g,' ')}</span></td>
+            <td class="mono">$${Number(a.capital).toLocaleString()}</td>
+            <td class="mono">${a.weight_pct}%</td>
+            <td class="mono" style="color:var(--green)">${a.score}</td>
+            <td class="mono">${a.yield_score}</td>
+            <td class="mono">${a.value_score}</td>
+            <td class="mono">${a.momentum_score}</td>
+            <td class="mono">${a.risk_score}</td>
+            <td class="mono">${a.roc_pct.toFixed(0)}%</td>
+            <td class="mono ${a.rsi<30?'green':a.rsi>70?'red':''}">${a.rsi.toFixed(0)}</td>
+            <td class="mono">${a.iv_rank.toFixed(0)}</td>
+            <td class="mono red">${a.dd_6w_pct.toFixed(1)}%</td>
+        </tr>`;
+    }).join('');
+
+    // Sector breakdown
+    const sectors = d.sectors;
+    document.getElementById('basket-sectors').innerHTML = '<h4>SECTOR ALLOCATION</h4><div class="sector-bars">' +
+        Object.entries(sectors).sort((a,b) => b[1]-a[1]).map(([s, pct]) =>
+            `<div class="sector-bar-row"><span class="sector-name">${s}</span><div class="sector-bar"><div class="sector-fill" style="width:${pct*3}px"></div></div><span class="mono">${pct}%</span></div>`
+        ).join('') + '</div>';
 }
 </script>
 </body>

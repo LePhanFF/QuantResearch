@@ -117,6 +117,238 @@ async def api_playbook():
     })
 
 
+@app.get("/api/fundamentals/{ticker}")
+async def api_fundamentals(ticker: str):
+    """Return company profile, financials, and news."""
+    import yfinance as yf
+
+    t = yf.Ticker(ticker)
+    info = t.info or {}
+
+    def sf(k, fmt=None):
+        v = info.get(k)
+        if v is None:
+            return None
+        if fmt == "pct":
+            return round(float(v) * 100, 1)
+        if fmt == "B":
+            return round(float(v) / 1e9, 2)
+        if fmt == "M":
+            return round(float(v) / 1e6, 1)
+        try:
+            f = float(v)
+            return round(f, 2) if f == f else None
+        except (TypeError, ValueError):
+            return v
+
+    # News
+    news_items = []
+    try:
+        raw = t.news or []
+        for n in raw[:8]:
+            content = n.get("content", n)
+            news_items.append({
+                "title": content.get("title", ""),
+                "publisher": content.get("provider", {}).get("displayName", "") if isinstance(content.get("provider"), dict) else content.get("publisher", ""),
+                "date": content.get("pubDate", ""),
+                "link": content.get("canonicalUrl", {}).get("url", "") if isinstance(content.get("canonicalUrl"), dict) else "",
+            })
+    except Exception:
+        pass
+
+    return JSONResponse({
+        "ticker": ticker,
+        "profile": {
+            "name": info.get("longName") or info.get("shortName", ticker),
+            "summary": info.get("longBusinessSummary", ""),
+            "sector": info.get("sector", ""),
+            "industry": info.get("industry", ""),
+            "employees": sf("fullTimeEmployees"),
+            "website": info.get("website", ""),
+        },
+        "valuation": {
+            "market_cap_b": sf("marketCap", "B"),
+            "trailing_pe": sf("trailingPE"),
+            "forward_pe": sf("forwardPE"),
+            "peg_ratio": sf("pegRatio"),
+            "price_to_book": sf("priceToBook"),
+            "ev_to_ebitda": sf("enterpriseToEbitda"),
+        },
+        "profitability": {
+            "gross_margin_pct": sf("grossMargins", "pct"),
+            "operating_margin_pct": sf("operatingMargins", "pct"),
+            "profit_margin_pct": sf("profitMargins", "pct"),
+            "roe_pct": sf("returnOnEquity", "pct"),
+            "roa_pct": sf("returnOnAssets", "pct"),
+        },
+        "growth": {
+            "revenue_growth_pct": sf("revenueGrowth", "pct"),
+            "earnings_growth_pct": sf("earningsGrowth", "pct"),
+        },
+        "balance_sheet": {
+            "total_cash_b": sf("totalCash", "B"),
+            "total_debt_b": sf("totalDebt", "B"),
+            "debt_to_equity": sf("debtToEquity"),
+            "current_ratio": sf("currentRatio"),
+            "free_cash_flow_b": sf("freeCashflow", "B"),
+            "operating_cash_flow_b": sf("operatingCashflow", "B"),
+        },
+        "dividends": {
+            "dividend_yield_pct": sf("dividendYield"),
+            "payout_ratio_pct": sf("payoutRatio", "pct"),
+            "annual_dividend": sf("trailingAnnualDividendRate"),
+        },
+        "news": news_items,
+    })
+
+
+@app.get("/api/basket")
+async def api_basket(size: int = 50000):
+    """Build an optimized portfolio basket for a given account size.
+
+    Balances yield, growth, and risk — constrains max drawdown to ~20%.
+    Returns allocations for selling puts, buying stock, and covered calls.
+    """
+    import math
+    import numpy as np
+
+    # Need scan data
+    global _latest_scan
+    scan = _latest_scan
+    if not scan:
+        scan = _load_latest_from_disk()
+    if not scan or not scan.get("tickers"):
+        return JSONResponse({"error": "Run a scan first (/api/scan)"}, status_code=400)
+
+    tickers = [t for t in scan["tickers"] if "error" not in t]
+
+    # Score each ticker for basket inclusion
+    scored = []
+    for t in tickers:
+        # Skip tickers that cost more than 20% of portfolio
+        capital = t.get("csp_capital_required", 0) or 0
+        if capital > size * 0.20 or capital <= 0:
+            continue
+
+        # Composite score: yield + growth potential + premium income - risk
+        ivr = t.get("iv_rank", 0) or 0
+        rsi = t.get("rsi_14", 50) or 50
+        roc = t.get("csp_ann_roc_pct", 0) or 0
+        dd = abs(t.get("max_dd_6w_pct", 0) or 0)
+        pe = t.get("trailing_pe", 25) or 25
+        off_high = abs(t.get("pct_off_52w_high", 0) or 0)
+        div_yield = 0
+        # Estimate div yield from sector
+        for wt in __import__("wheel_criteria", fromlist=["WHEEL_TICKERS"]).WHEEL_TICKERS:
+            if wt.ticker == t["ticker"]:
+                div_yield = wt.dividend_yield
+                break
+
+        # Yield score (0-25): dividend + option premium
+        yield_score = min(div_yield * 3, 15) + min(roc * 0.5, 10)
+
+        # Value score (0-25): lower P/E better, pullback = opportunity
+        value_score = max(0, 25 - pe * 0.4) + min(off_high * 0.5, 10)
+
+        # Momentum score (0-25): RSI sweet spot 30-60
+        if rsi < 30:
+            mom_score = 20  # oversold = great entry
+        elif rsi < 50:
+            mom_score = 15
+        elif rsi < 70:
+            mom_score = 8
+        else:
+            mom_score = 0  # overbought = avoid
+
+        # Risk penalty (0-25): lower drawdown = better
+        risk_score = max(0, 25 - dd * 1.5)
+
+        total = yield_score + value_score + mom_score + risk_score
+        action = t.get("entry_action", "STAND_ASIDE")
+
+        scored.append({
+            "ticker": t["ticker"],
+            "name": t.get("name", ""),
+            "sector": t.get("sector", ""),
+            "price": t.get("price", 0),
+            "capital": capital,
+            "action": action,
+            "score": round(total, 1),
+            "yield_score": round(yield_score, 1),
+            "value_score": round(value_score, 1),
+            "momentum_score": round(mom_score, 1),
+            "risk_score": round(risk_score, 1),
+            "iv_rank": ivr,
+            "rsi": rsi,
+            "roc_pct": roc,
+            "dd_6w_pct": -dd,
+            "div_yield": div_yield,
+            "csp_strike": t.get("csp_strike"),
+            "csp_premium": t.get("csp_premium"),
+            "trailing_pe": t.get("trailing_pe"),
+        })
+
+    # Sort by composite score
+    scored.sort(key=lambda x: x["score"], reverse=True)
+
+    # Greedy allocation with concentration limits
+    cash_buffer = 0.25
+    deployable = size * (1 - cash_buffer)
+    max_per_ticker = size * 0.20
+    max_per_sector = size * 0.35
+    max_dd_target = 20.0  # max portfolio drawdown %
+
+    allocated = []
+    sector_used = {}
+    total_deployed = 0.0
+    total_yield = 0.0
+    total_roc = 0.0
+    total_dd_weighted = 0.0
+
+    for s in scored:
+        if total_deployed >= deployable:
+            break
+        cost = s["capital"]
+        if cost > max_per_ticker:
+            continue
+        if total_deployed + cost > deployable:
+            continue
+        sec = s["sector"]
+        if sector_used.get(sec, 0) + cost > max_per_sector:
+            continue
+
+        # Check portfolio drawdown constraint
+        weight = cost / size
+        projected_dd = abs(s["dd_6w_pct"]) * weight
+        if total_dd_weighted + projected_dd > max_dd_target * 0.8:
+            continue
+
+        allocated.append({
+            **s,
+            "weight_pct": round(cost / size * 100, 1),
+            "strategy": "SELL_PUT" if s["action"] == "SELL_PUT" else "BUY_STOCK",
+        })
+        sector_used[sec] = sector_used.get(sec, 0) + cost
+        total_deployed += cost
+        total_yield += s["div_yield"] * (cost / size)
+        total_roc += s["roc_pct"] * (cost / size)
+        total_dd_weighted += projected_dd
+
+    return JSONResponse({
+        "account_size": size,
+        "deployed": round(total_deployed, 0),
+        "deployed_pct": round(total_deployed / size * 100, 1),
+        "cash_reserve": round(size - total_deployed, 0),
+        "cash_reserve_pct": round((size - total_deployed) / size * 100, 1),
+        "positions": len(allocated),
+        "weighted_yield_pct": round(total_yield, 2),
+        "weighted_roc_pct": round(total_roc, 1),
+        "est_drawdown_pct": round(total_dd_weighted, 1),
+        "allocations": allocated,
+        "sectors": {k: round(v / size * 100, 1) for k, v in sector_used.items()},
+    })
+
+
 @app.get("/api/options/{ticker}")
 async def api_options(ticker: str, expiry: str | None = None):
     """Return option chain (puts + calls) for a ticker.
