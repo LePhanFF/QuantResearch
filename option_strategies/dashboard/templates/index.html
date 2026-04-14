@@ -31,10 +31,21 @@
 <!-- Summary strip -->
 <div class="summary-strip" id="summary-strip"></div>
 
-<!-- Main layout: table left, chart right -->
-<div class="terminal-layout">
+<!-- Main layout: table left, draggable divider, chart right -->
+<div class="terminal-layout" id="terminal-layout">
     <!-- Left panel: ticker table -->
     <div class="left-panel" id="left-panel">
+        <!-- Group filter -->
+        <div class="group-bar">
+            <button class="grp-btn active" onclick="setGroup('ALL')">All</button>
+            <button class="grp-btn" onclick="setGroup('INDEX')">Index</button>
+            <button class="grp-btn" onclick="setGroup('MEGA')">Mega-Cap</button>
+            <button class="grp-btn" onclick="setGroup('GROWTH')">Growth</button>
+            <button class="grp-btn" onclick="setGroup('STAPLES')">Staples</button>
+            <button class="grp-btn" onclick="setGroup('FINANCIALS')">Financials</button>
+            <button class="grp-btn" onclick="setGroup('INCOME')">Income</button>
+            <button class="grp-btn" onclick="setGroup('HEDGES')">Hedges</button>
+        </div>
         <table class="ticker-table" id="ticker-table">
             <thead><tr>
                 <th onclick="sortBy('ticker')" class="sortable">Sym</th>
@@ -53,6 +64,9 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Draggable divider -->
+    <div class="divider" id="divider"></div>
 
     <!-- Right panel: chart + detail -->
     <div class="right-panel" id="right-panel">
@@ -126,6 +140,65 @@
 <script>
 let scanData = null, sortCol = 'iv_rank', sortDir = -1, selectedTicker = null;
 let mainChart = null, rsiChart = null;
+let activeGroup = 'ALL';
+
+// Ticker-to-group mapping
+const GROUPS = {
+    'SPY':'INDEX','SPLG':'INDEX','QQQ':'INDEX','QQQM':'INDEX','DIA':'INDEX',
+    'XLK':'INDEX','XLV':'INDEX','XLI':'INDEX','XLRE':'INDEX',
+    'AAPL':'MEGA','MSFT':'MEGA','AMZN':'MEGA','GOOGL':'MEGA','META':'MEGA','BRK-B':'MEGA',
+    'NVDA':'GROWTH','AMD':'GROWTH','TSLA':'GROWTH','NFLX':'GROWTH','CRM':'GROWTH','DIS':'GROWTH',
+    'KO':'STAPLES','PEP':'STAPLES','JNJ':'STAPLES',
+    'JPM':'FINANCIALS','BAC':'FINANCIALS','V':'FINANCIALS','MA':'FINANCIALS',
+    'C':'FINANCIALS','GS':'FINANCIALS','XLF':'FINANCIALS',
+    'ABBV':'INCOME','O':'INCOME','T':'INCOME','VZ':'INCOME','MO':'INCOME','PM':'INCOME',
+    'CVX':'INCOME','XOM':'INCOME','PFE':'INCOME','BMY':'INCOME','SCHD':'INCOME',
+    'VYM':'INCOME','JEPI':'INCOME','SPG':'INCOME','VNQ':'INCOME','XLE':'INCOME',
+    'IWM':'HEDGES','GLD':'HEDGES','TLT':'HEDGES','EEM':'HEDGES',
+};
+const GROUP_LABELS = {
+    'INDEX':'Index ETFs','MEGA':'Mega-Cap','GROWTH':'High IV / Growth',
+    'STAPLES':'Dividend Staples','FINANCIALS':'Financials',
+    'INCOME':'Income / Yield','HEDGES':'Hedges / Alts',
+};
+const GROUP_ORDER = ['INDEX','MEGA','GROWTH','STAPLES','FINANCIALS','INCOME','HEDGES'];
+
+// Draggable divider
+(function initDivider() {
+    window.addEventListener('DOMContentLoaded', () => {
+        const divider = document.getElementById('divider');
+        const left = document.getElementById('left-panel');
+        const layout = document.getElementById('terminal-layout');
+        let dragging = false;
+
+        divider.addEventListener('mousedown', e => { dragging = true; e.preventDefault(); });
+        document.addEventListener('mousemove', e => {
+            if (!dragging) return;
+            const rect = layout.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const min = 320, max = rect.width - 300;
+            left.style.width = Math.max(min, Math.min(max, x)) + 'px';
+            left.style.flexShrink = '0';
+            // Resize charts if visible
+            if (mainChart) {
+                const cc = document.getElementById('chart-container');
+                mainChart.applyOptions({width: cc.clientWidth});
+            }
+            if (rsiChart) {
+                const rc = document.getElementById('rsi-container');
+                rsiChart.applyOptions({width: rc.clientWidth});
+            }
+        });
+        document.addEventListener('mouseup', () => { dragging = false; });
+    });
+})();
+
+function setGroup(g) {
+    activeGroup = g;
+    document.querySelectorAll('.grp-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    render();
+}
 
 window.addEventListener('DOMContentLoaded', () => loadLatest());
 
@@ -183,6 +256,28 @@ function renderStrip(tickers) {
     `;
 }
 
+function tickerRow(t) {
+    const chg = t.day_change_pct||0, rsi = t.rsi_14||0, ivr = t.iv_rank||0;
+    const pe = t.trailing_pe ? t.trailing_pe.toFixed(0) : '-';
+    const off = t.pct_off_52w_high||0;
+    const sig = t.entry_action;
+    const sigCls = sig==='SELL_PUT'?'sell-put':sig==='BUY_STOCK'?'buy-stock':'stand-aside';
+    const rrCls = t.risk_reward==='GOOD'?'green':t.risk_reward==='POOR'?'red':'yellow';
+    const sel = t.ticker === selectedTicker ? ' selected' : '';
+    return `<tr class="trow${sel}" onclick="selectTicker('${t.ticker}')">
+        <td class="sym">${t.ticker}</td>
+        <td class="mono">$${t.price.toFixed(2)}</td>
+        <td class="mono ${chg>=0?'green':'red'}">${chg>=0?'+':''}${chg.toFixed(1)}%</td>
+        <td class="mono ${rsi>70?'red':rsi<30?'green':''}">${rsi.toFixed(0)}</td>
+        <td class="mono ${ivr>=50?'green':''}">${ivr.toFixed(0)}</td>
+        <td class="mono">${pe}</td>
+        <td class="mono ${off<-10?'blue':''}">${off.toFixed(0)}%</td>
+        <td><span class="sig ${sigCls}">${sig.replace(/_/g,' ')}</span></td>
+        <td class="mono">${(t.csp_ann_roc_pct||0).toFixed(0)}%</td>
+        <td class="mono ${rrCls}">${t.risk_reward||'-'}</td>
+    </tr>`;
+}
+
 function renderTable(tickers) {
     const activeTab = document.querySelector('.tab.active')?.textContent;
     let filtered = tickers;
@@ -190,6 +285,12 @@ function renderTable(tickers) {
     else if (activeTab === 'Accumulate') filtered = tickers.filter(t=>t.entry_action==='BUY_STOCK');
     else if (activeTab === 'Stand Aside') filtered = tickers.filter(t=>t.entry_action==='STAND_ASIDE');
 
+    // Apply group filter
+    if (activeGroup !== 'ALL') {
+        filtered = filtered.filter(t => (GROUPS[t.ticker]||'') === activeGroup);
+    }
+
+    // Sort within groups
     filtered.sort((a,b) => {
         let va = a[sortCol], vb = b[sortCol];
         if (va == null) va = -9999; if (vb == null) vb = -9999;
@@ -197,27 +298,26 @@ function renderTable(tickers) {
         return sortDir * (va - vb);
     });
 
-    document.getElementById('ticker-body').innerHTML = filtered.map(t => {
-        const chg = t.day_change_pct||0, rsi = t.rsi_14||0, ivr = t.iv_rank||0;
-        const pe = t.trailing_pe ? t.trailing_pe.toFixed(0) : '-';
-        const off = t.pct_off_52w_high||0;
-        const sig = t.entry_action;
-        const sigCls = sig==='SELL_PUT'?'sell-put':sig==='BUY_STOCK'?'buy-stock':'stand-aside';
-        const rrCls = t.risk_reward==='GOOD'?'green':t.risk_reward==='POOR'?'red':'yellow';
-        const sel = t.ticker === selectedTicker ? ' selected' : '';
-        return `<tr class="trow${sel}" onclick="selectTicker('${t.ticker}')">
-            <td class="sym">${t.ticker}</td>
-            <td class="mono">$${t.price.toFixed(2)}</td>
-            <td class="mono ${chg>=0?'green':'red'}">${chg>=0?'+':''}${chg.toFixed(1)}%</td>
-            <td class="mono ${rsi>70?'red':rsi<30?'green':''}">${rsi.toFixed(0)}</td>
-            <td class="mono ${ivr>=50?'green':''}">${ivr.toFixed(0)}</td>
-            <td class="mono">${pe}</td>
-            <td class="mono ${off<-10?'blue':''}">${off.toFixed(0)}%</td>
-            <td><span class="sig ${sigCls}">${sig.replace(/_/g,' ')}</span></td>
-            <td class="mono">${(t.csp_ann_roc_pct||0).toFixed(0)}%</td>
-            <td class="mono ${rrCls}">${t.risk_reward||'-'}</td>
-        </tr>`;
-    }).join('') || '<tr><td colspan="10" class="empty-msg">No matches</td></tr>';
+    let html = '';
+    if (activeGroup === 'ALL') {
+        // Render with group headers
+        for (const grp of GROUP_ORDER) {
+            const grpTickers = filtered.filter(t => (GROUPS[t.ticker]||'') === grp);
+            if (grpTickers.length === 0) continue;
+            html += `<tr class="group-header"><td colspan="10">${GROUP_LABELS[grp] || grp} (${grpTickers.length})</td></tr>`;
+            html += grpTickers.map(tickerRow).join('');
+        }
+        // Any ungrouped
+        const ungrouped = filtered.filter(t => !GROUPS[t.ticker]);
+        if (ungrouped.length > 0) {
+            html += `<tr class="group-header"><td colspan="10">Other (${ungrouped.length})</td></tr>`;
+            html += ungrouped.map(tickerRow).join('');
+        }
+    } else {
+        html = filtered.map(tickerRow).join('');
+    }
+
+    document.getElementById('ticker-body').innerHTML = html || '<tr><td colspan="10" class="empty-msg">No matches</td></tr>';
 }
 
 function sortBy(col) {
