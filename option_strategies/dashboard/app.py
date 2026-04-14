@@ -117,6 +117,80 @@ async def api_playbook():
     })
 
 
+@app.get("/api/options/{ticker}")
+async def api_options(ticker: str, expiry: str | None = None):
+    """Return option chain (puts + calls) for a ticker.
+
+    If expiry is omitted, returns available expirations.
+    If expiry is given (YYYY-MM-DD), returns the chain for that date.
+    """
+    import pandas as pd
+    import yfinance as yf
+    import math
+
+    t = yf.Ticker(ticker)
+    expirations = list(t.options) if t.options else []
+
+    if not expiry:
+        return JSONResponse({"ticker": ticker, "expirations": expirations})
+
+    if expiry not in expirations:
+        return JSONResponse({"error": f"Invalid expiry {expiry}"}, status_code=400)
+
+    chain = t.option_chain(expiry)
+    spot = None
+    try:
+        info = t.info
+        spot = info.get("currentPrice") or info.get("regularMarketPrice")
+    except Exception:
+        pass
+
+    def safe_float(v, default=0.0):
+        try:
+            f = float(v)
+            return f if f == f else default  # NaN check
+        except (TypeError, ValueError):
+            return default
+
+    def safe_int(v, default=0):
+        try:
+            f = float(v)
+            return int(f) if f == f else default
+        except (TypeError, ValueError):
+            return default
+
+    def clean(df, side):
+        rows = []
+        for _, r in df.iterrows():
+            bid = safe_float(r.get("bid"))
+            ask = safe_float(r.get("ask"))
+            rows.append({
+                "strike": float(r["strike"]),
+                "last": safe_float(r.get("lastPrice")),
+                "bid": bid,
+                "ask": ask,
+                "mid": round((bid + ask) / 2, 2),
+                "volume": safe_int(r.get("volume")),
+                "oi": safe_int(r.get("openInterest")),
+                "iv": round(safe_float(r.get("impliedVolatility")) * 100, 1),
+                "itm": bool(r.get("inTheMoney", False)),
+                "side": side,
+            })
+        return rows
+
+    puts = clean(chain.puts, "PUT")
+    calls = clean(chain.calls, "CALL")
+
+    return JSONResponse({
+        "ticker": ticker,
+        "expiry": expiry,
+        "spot": spot,
+        "puts": puts,
+        "calls": calls,
+        "expirations": expirations,
+    })
+
+
 # ── Dashboard ────────────────────────────────────────────────────
 
 @app.get("/api/chart/{ticker}")

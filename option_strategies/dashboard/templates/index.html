@@ -77,6 +77,23 @@
         <div id="chart-container" class="chart-container"></div>
         <div id="rsi-container" class="rsi-container"></div>
         <div id="detail-content" class="detail-content"></div>
+        <!-- Option Chain -->
+        <div id="option-chain" class="option-chain-panel">
+            <div class="chain-header">
+                <h4>OPTION CHAIN</h4>
+                <div class="chain-controls">
+                    <select id="expiry-select" onchange="loadChain()"></select>
+                    <div class="chain-tabs">
+                        <button class="chain-tab active" onclick="setChainView('both',this)">Both</button>
+                        <button class="chain-tab" onclick="setChainView('puts',this)">Puts</button>
+                        <button class="chain-tab" onclick="setChainView('calls',this)">Calls</button>
+                    </div>
+                </div>
+            </div>
+            <div id="chain-body" class="chain-body">
+                <div class="empty-msg">Select a ticker to view options</div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -360,6 +377,9 @@ async function selectTicker(ticker) {
 
     // Render detail panel
     renderDetail(t);
+
+    // Load option chain expirations
+    loadExpirations(ticker);
 }
 
 function renderChart(data, t) {
@@ -476,6 +496,111 @@ function renderDetail(t) {
             <div class="d-row"><span>CC Delta</span><span class="mono">${t.share_mgmt_delta||'-'}</span></div>
         </div>
     </div>`;
+}
+
+// ── Option Chain ──────────────────────────────────────────────
+let chainData = null, chainView = 'both';
+
+async function loadExpirations(ticker) {
+    const sel = document.getElementById('expiry-select');
+    sel.innerHTML = '<option>Loading...</option>';
+    try {
+        const r = await fetch(`/api/options/${ticker}`);
+        const d = await r.json();
+        if (!d.expirations || d.expirations.length === 0) {
+            sel.innerHTML = '<option>No options</option>';
+            return;
+        }
+        // Show first ~8 expirations
+        sel.innerHTML = d.expirations.slice(0, 12).map(e =>
+            `<option value="${e}">${e}</option>`
+        ).join('');
+        loadChain();
+    } catch(e) {
+        sel.innerHTML = '<option>Error</option>';
+    }
+}
+
+async function loadChain() {
+    if (!selectedTicker) return;
+    const expiry = document.getElementById('expiry-select').value;
+    if (!expiry) return;
+    const body = document.getElementById('chain-body');
+    body.innerHTML = '<div class="empty-msg"><div class="spinner"></div>Loading chain...</div>';
+    try {
+        const r = await fetch(`/api/options/${selectedTicker}?expiry=${expiry}`);
+        chainData = await r.json();
+        renderChain();
+    } catch(e) {
+        body.innerHTML = '<div class="empty-msg">Failed to load chain</div>';
+    }
+}
+
+function setChainView(view, btn) {
+    chainView = view;
+    document.querySelectorAll('.chain-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderChain();
+}
+
+function renderChain() {
+    if (!chainData) return;
+    const body = document.getElementById('chain-body');
+    const spot = chainData.spot || 0;
+
+    // Filter to strikes within ~15% of spot for readability
+    const range = spot * 0.15;
+    const puts = chainData.puts.filter(o => Math.abs(o.strike - spot) <= range);
+    const calls = chainData.calls.filter(o => Math.abs(o.strike - spot) <= range);
+
+    // Get all strikes in range
+    const strikeSet = new Set();
+    puts.forEach(o => strikeSet.add(o.strike));
+    calls.forEach(o => strikeSet.add(o.strike));
+    const strikes = [...strikeSet].sort((a,b) => a - b);
+
+    const putMap = {}; puts.forEach(o => putMap[o.strike] = o);
+    const callMap = {}; calls.forEach(o => callMap[o.strike] = o);
+
+    const showPuts = chainView === 'both' || chainView === 'puts';
+    const showCalls = chainView === 'both' || chainView === 'calls';
+
+    let html = '<table class="chain-table"><thead><tr>';
+    if (showCalls) html += '<th>OI</th><th>Vol</th><th>IV%</th><th>Bid</th><th>Ask</th><th class="call-label">CALL</th>';
+    html += '<th class="strike-col">Strike</th>';
+    if (showPuts) html += '<th class="put-label">PUT</th><th>Bid</th><th>Ask</th><th>IV%</th><th>Vol</th><th>OI</th>';
+    html += '</tr></thead><tbody>';
+
+    for (const strike of strikes) {
+        const c = callMap[strike] || {};
+        const p = putMap[strike] || {};
+        const isATM = spot > 0 && Math.abs(strike - spot) < (strikes.length > 1 ? (strikes[1] - strikes[0]) * 0.6 : 1);
+        const rowClass = isATM ? ' atm-row' : (strike < spot ? ' itm-put' : (strike > spot ? ' itm-call' : ''));
+
+        html += `<tr class="chain-row${rowClass}">`;
+        if (showCalls) {
+            html += `<td class="mono dim">${c.oi||''}</td>`;
+            html += `<td class="mono dim">${c.volume||''}</td>`;
+            html += `<td class="mono">${c.iv||''}</td>`;
+            html += `<td class="mono green">${c.bid||''}</td>`;
+            html += `<td class="mono green">${c.ask||''}</td>`;
+            html += `<td class="mono call-price">${c.mid ? '$'+c.mid.toFixed(2) : ''}</td>`;
+        }
+        html += `<td class="strike-col${isATM?' atm':''}">$${strike.toFixed(2)}</td>`;
+        if (showPuts) {
+            html += `<td class="mono put-price">${p.mid ? '$'+p.mid.toFixed(2) : ''}</td>`;
+            html += `<td class="mono red">${p.bid||''}</td>`;
+            html += `<td class="mono red">${p.ask||''}</td>`;
+            html += `<td class="mono">${p.iv||''}</td>`;
+            html += `<td class="mono dim">${p.volume||''}</td>`;
+            html += `<td class="mono dim">${p.oi||''}</td>`;
+        }
+        html += '</tr>';
+    }
+
+    html += '</tbody></table>';
+    if (spot) html += `<div class="chain-spot">Spot: $${spot.toFixed(2)} | ${strikes.length} strikes shown (${chainView})</div>`;
+    body.innerHTML = html;
 }
 </script>
 </body>
