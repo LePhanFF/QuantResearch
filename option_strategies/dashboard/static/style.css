@@ -82,6 +82,10 @@ body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); 
 /* Chart area */
 .chart-header { padding:8px 16px; border-bottom:1px solid var(--border); background:var(--surface); display:flex; justify-content:space-between; align-items:center; }
 #chart-ticker { font-weight:700; font-size:14px; }
+.tf-buttons { display:flex; gap:2px; }
+.tf-btn { background:none; border:1px solid var(--border); color:var(--text-dim); padding:3px 8px; font-size:10px; font-weight:600; cursor:pointer; border-radius:3px; font-family:'JetBrains Mono',monospace; }
+.tf-btn.active { background:var(--blue-bg); color:var(--blue); border-color:var(--blue); }
+.tf-btn:hover { color:var(--text); }
 .chart-container { height:340px; background:var(--surface); }
 .rsi-container { height:100px; background:var(--surface); border-top:1px solid var(--border); }
 

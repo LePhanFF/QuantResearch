@@ -225,45 +225,81 @@ async def api_options(ticker: str, expiry: str | None = None):
 # ── Dashboard ────────────────────────────────────────────────────
 
 @app.get("/api/chart/{ticker}")
-async def api_chart(ticker: str, months: int = 6):
-    """Return OHLCV + indicators for interactive charting."""
+async def api_chart(ticker: str, tf: str = "1Y"):
+    """Return OHLCV + indicators for interactive charting.
+
+    Timeframe options:
+      1D  = today intraday (15m bars)
+      5D  = 5 days intraday (15m bars)
+      1M  = 1 month (1h bars)
+      3M  = 3 months (1h bars)
+      6M  = 6 months (daily bars)
+      1Y  = 1 year (daily bars)
+      2Y  = 2 years (daily bars)
+      5Y  = 5 years (daily bars)
+    """
     import math
-    from datetime import datetime, timedelta
     import numpy as np
     import pandas as pd
     import yfinance as yf
 
-    end = datetime.now()
-    start = end - timedelta(days=months * 31)
-    df = yf.download(ticker, start=start.strftime("%Y-%m-%d"),
-                     end=end.strftime("%Y-%m-%d"), progress=False,
-                     auto_adjust=False)
+    # Map timeframe to yfinance period + interval
+    TF_MAP = {
+        "1D":  ("1d",  "15m"),
+        "5D":  ("5d",  "15m"),
+        "1M":  ("1mo", "1h"),
+        "3M":  ("3mo", "1h"),
+        "6M":  ("6mo", "1d"),
+        "1Y":  ("1y",  "1d"),
+        "2Y":  ("2y",  "1d"),
+        "5Y":  ("5y",  "1d"),
+    }
+    period, interval = TF_MAP.get(tf.upper(), ("1y", "1d"))
+    intraday = interval in ("15m", "1h")
+
+    df = yf.download(ticker, period=period, interval=interval,
+                     progress=False, auto_adjust=False)
     if df.empty:
         return JSONResponse({"error": f"No data for {ticker}"}, status_code=404)
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
 
+    # Time formatting: intraday uses unix timestamp, daily uses date string
+    def fmt_time(dt):
+        if intraday:
+            return int(dt.timestamp())
+        return dt.strftime("%Y-%m-%d")
+
     # OHLCV candles
     candles = []
     for dt, row in df.iterrows():
         candles.append({
-            "time": dt.strftime("%Y-%m-%d"),
+            "time": fmt_time(dt),
             "open": round(float(row["Open"]), 2),
             "high": round(float(row["High"]), 2),
             "low": round(float(row["Low"]), 2),
             "close": round(float(row["Close"]), 2),
-            "volume": int(row.get("Volume", 0)),
         })
 
     close = df["Close"]
 
-    # EMAs
-    ema20 = close.ewm(span=20).mean()
-    ema50 = close.ewm(span=50).mean()
-    sma200 = close.rolling(200).mean()
+    # EMAs (adjust periods for intraday)
+    if intraday and interval == "15m":
+        ema_short, ema_mid = 26, 78  # ~1 day, ~3 days in 15m bars
+        sma_long_period = 200        # won't have enough data, that's fine
+    elif intraday and interval == "1h":
+        ema_short, ema_mid = 20, 50
+        sma_long_period = 200
+    else:
+        ema_short, ema_mid = 20, 50
+        sma_long_period = 200
+
+    ema20 = close.ewm(span=ema_short).mean()
+    ema50 = close.ewm(span=ema_mid).mean()
+    sma200 = close.rolling(sma_long_period).mean()
 
     def series_to_list(s):
-        return [{"time": dt.strftime("%Y-%m-%d"), "value": round(float(v), 2)}
+        return [{"time": fmt_time(dt), "value": round(float(v), 2)}
                 for dt, v in s.dropna().items()]
 
     # RSI-14
@@ -277,12 +313,23 @@ async def api_chart(ticker: str, months: int = 6):
 
     # Volume
     vol = df.get("Volume", pd.Series(dtype=float))
-    vol_data = [{"time": dt.strftime("%Y-%m-%d"), "value": int(v),
-                 "color": "#26a69a80" if float(df.loc[dt, "Close"]) >= float(df.loc[dt, "Open"]) else "#ef535080"}
-                for dt, v in vol.items() if not pd.isna(v)]
+    vol_data = []
+    for dt, v in vol.items():
+        if pd.isna(v):
+            continue
+        c = float(df.loc[dt, "Close"])
+        o = float(df.loc[dt, "Open"])
+        vol_data.append({
+            "time": fmt_time(dt),
+            "value": int(v),
+            "color": "#26a69a80" if c >= o else "#ef535080",
+        })
 
     return JSONResponse({
         "ticker": ticker,
+        "timeframe": tf.upper(),
+        "interval": interval,
+        "bars": len(candles),
         "candles": candles,
         "ema20": series_to_list(ema20),
         "ema50": series_to_list(ema50),
