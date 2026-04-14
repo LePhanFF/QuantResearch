@@ -121,7 +121,7 @@ async def api_playbook():
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 
 def _load_latest_from_disk() -> dict | None:
