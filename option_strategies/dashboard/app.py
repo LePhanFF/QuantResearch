@@ -119,6 +119,74 @@ async def api_playbook():
 
 # ── Dashboard ────────────────────────────────────────────────────
 
+@app.get("/api/chart/{ticker}")
+async def api_chart(ticker: str, months: int = 6):
+    """Return OHLCV + indicators for interactive charting."""
+    import math
+    from datetime import datetime, timedelta
+    import numpy as np
+    import pandas as pd
+    import yfinance as yf
+
+    end = datetime.now()
+    start = end - timedelta(days=months * 31)
+    df = yf.download(ticker, start=start.strftime("%Y-%m-%d"),
+                     end=end.strftime("%Y-%m-%d"), progress=False,
+                     auto_adjust=False)
+    if df.empty:
+        return JSONResponse({"error": f"No data for {ticker}"}, status_code=404)
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+
+    # OHLCV candles
+    candles = []
+    for dt, row in df.iterrows():
+        candles.append({
+            "time": dt.strftime("%Y-%m-%d"),
+            "open": round(float(row["Open"]), 2),
+            "high": round(float(row["High"]), 2),
+            "low": round(float(row["Low"]), 2),
+            "close": round(float(row["Close"]), 2),
+            "volume": int(row.get("Volume", 0)),
+        })
+
+    close = df["Close"]
+
+    # EMAs
+    ema20 = close.ewm(span=20).mean()
+    ema50 = close.ewm(span=50).mean()
+    sma200 = close.rolling(200).mean()
+
+    def series_to_list(s):
+        return [{"time": dt.strftime("%Y-%m-%d"), "value": round(float(v), 2)}
+                for dt, v in s.dropna().items()]
+
+    # RSI-14
+    delta = close.diff()
+    gain = delta.where(delta > 0, 0.0)
+    loss = -delta.where(delta < 0, 0.0)
+    avg_gain = gain.ewm(com=13, adjust=False).mean()
+    avg_loss = loss.ewm(com=13, adjust=False).mean()
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+
+    # Volume
+    vol = df.get("Volume", pd.Series(dtype=float))
+    vol_data = [{"time": dt.strftime("%Y-%m-%d"), "value": int(v),
+                 "color": "#26a69a80" if float(df.loc[dt, "Close"]) >= float(df.loc[dt, "Open"]) else "#ef535080"}
+                for dt, v in vol.items() if not pd.isna(v)]
+
+    return JSONResponse({
+        "ticker": ticker,
+        "candles": candles,
+        "ema20": series_to_list(ema20),
+        "ema50": series_to_list(ema50),
+        "sma200": series_to_list(sma200),
+        "rsi": series_to_list(rsi),
+        "volume": vol_data,
+    })
+
+
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
     return templates.TemplateResponse(request, "index.html")

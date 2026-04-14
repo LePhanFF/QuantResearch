@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:finance.yahoo.com)",
+      "WebFetch(domain:www.cmegroup.com)",
+      "WebFetch(domain:stockanalysis.com)",
+      "WebFetch(domain:optimusfutures.com)",
+      "WebFetch(domain:www.quantvps.com)"
+    ]
+  }
+}

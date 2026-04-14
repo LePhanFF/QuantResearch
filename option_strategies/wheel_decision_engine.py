@@ -164,6 +164,18 @@ IVR_BUY_STOCK = 20      # below this, CSP premium isn't worth the effort
 QUALITY_MIN = 7         # minimum quality score (1-10) to trade
 SMA_MAX_BELOW = 10      # max % below 200 SMA before standing aside
 
+# Valuation thresholds
+PE_OVERVALUED = 40      # trailing P/E above this = overbought flag
+PE_CHEAP = 15           # trailing P/E below this = value territory
+
+# Momentum / overbought-oversold
+RSI_OVERBOUGHT = 70     # RSI above this = don't chase
+RSI_OVERSOLD = 30       # RSI below this = accumulation zone
+
+# Pullback & risk
+PULLBACK_SWEET_SPOT = 10  # 10-25% off 52w high = best entry zone
+PULLBACK_DEEP = 25        # > 25% off = potential value trap, be careful
+
 
 def evaluate_entry(
     *,
@@ -174,6 +186,13 @@ def evaluate_entry(
     earnings_within_dte: bool,
     in_strong_uptrend: bool = False,
     ex_div_before_expiry: bool = False,
+    # New valuation & momentum inputs (all optional for backward compat)
+    rsi_14: Optional[float] = None,
+    trailing_pe: Optional[float] = None,
+    forward_pe: Optional[float] = None,
+    pct_off_52w_high: Optional[float] = None,  # negative number, e.g. -15.0
+    premium_ann_roc: Optional[float] = None,    # CSP annualized return on capital
+    max_dd_6w: Optional[float] = None,          # 6-week max drawdown (negative)
 ) -> Decision:
     """
     Decide whether to open a new position.
@@ -203,6 +222,9 @@ def evaluate_entry(
     - Price > 10% below 200 SMA with high IV (broken chart)
     - Quality below threshold
     """
+    # --- Build context tags for multi-factor reasoning ---
+    warnings: list[str] = []
+
     # --- Hard exclusions ---
     if quality_score < QUALITY_MIN:
         return Decision(Action.STAND_ASIDE,
@@ -222,6 +244,65 @@ def evaluate_entry(
                         "Below 200 SMA with crisis-level IV — "
                         "do not sell premium into a breakdown.")
 
+    # --- RSI overbought: don't chase the top ---
+    if rsi_14 is not None and rsi_14 > RSI_OVERBOUGHT:
+        if trailing_pe is not None and trailing_pe > PE_OVERVALUED:
+            return Decision(Action.STAND_ASIDE,
+                            f"RSI {rsi_14:.0f} overbought + P/E {trailing_pe:.0f} "
+                            f"stretched. Don't chase — wait for pullback.")
+        warnings.append(f"RSI {rsi_14:.0f} overbought")
+
+    # --- Overvalued on P/E alone ---
+    if trailing_pe is not None and trailing_pe > PE_OVERVALUED:
+        warnings.append(f"P/E {trailing_pe:.0f} > {PE_OVERVALUED}")
+
+    # --- Risk/reward check: premium vs recent drawdown ---
+    if premium_ann_roc is not None and max_dd_6w is not None:
+        if premium_ann_roc < abs(max_dd_6w) * 0.5:
+            warnings.append(
+                f"Poor risk/reward: {premium_ann_roc:.0f}% ann ROC vs "
+                f"{max_dd_6w:.0f}% 6w drawdown"
+            )
+
+    # --- Pullback / accumulation zone detection ---
+    pullback_pct = abs(pct_off_52w_high) if pct_off_52w_high is not None else 0
+    in_pullback_zone = PULLBACK_SWEET_SPOT <= pullback_pct <= PULLBACK_DEEP
+    deep_pullback = pullback_pct > PULLBACK_DEEP
+
+    # --- RSI oversold + value = prime accumulation ---
+    if rsi_14 is not None and rsi_14 < RSI_OVERSOLD and above_200_sma:
+        if trailing_pe is not None and trailing_pe < PE_CHEAP:
+            return Decision(
+                Action.BUY_STOCK,
+                f"RSI {rsi_14:.0f} oversold + P/E {trailing_pe:.0f} cheap + "
+                "above 200 SMA. Prime accumulation — buy outright.",
+            )
+        if iv_rank >= IVR_SELL_PUT:
+            return Decision(
+                Action.SELL_PUT,
+                f"RSI {rsi_14:.0f} oversold + IVR {iv_rank:.0f} rich. "
+                "Sell aggressive put to accumulate at discount.",
+                target_delta=0.30, target_dte=35,
+            )
+
+    # --- Pullback sweet spot (10-25% off highs) ---
+    if in_pullback_zone and above_200_sma:
+        if iv_rank >= IVR_SELL_PUT:
+            note = (f"{pullback_pct:.0f}% off 52w high — pullback zone. "
+                    f"IVR {iv_rank:.0f} rich. Sell put to accumulate at discount.")
+            return Decision(Action.SELL_PUT, note,
+                            target_delta=0.25, target_dte=35)
+        else:
+            return Decision(Action.BUY_STOCK,
+                            f"{pullback_pct:.0f}% off 52w high — pullback zone. "
+                            "IV too low for CSP, buy the dip outright.")
+
+    # --- Deep pullback: be careful ---
+    if deep_pullback and not above_200_sma:
+        return Decision(Action.STAND_ASIDE,
+                        f"{pullback_pct:.0f}% off 52w high + below 200 SMA. "
+                        "Potential value trap. Wait for stabilisation.")
+
     # --- Outright buy triggers ---
     if in_strong_uptrend and iv_rank < 25:
         return Decision(Action.BUY_STOCK,
@@ -236,25 +317,32 @@ def evaluate_entry(
     if iv_rank < IVR_BUY_STOCK:
         return Decision(Action.BUY_STOCK,
                         f"IV rank {iv_rank:.0f} < {IVR_BUY_STOCK} — premium too "
-                        "thin to bother.  Accumulate shares on dips instead.")
+                        "thin to bother. Accumulate shares on dips instead.")
 
-    # --- Sell put ---
+    # --- Sell put (core logic) ---
     if iv_rank >= IVR_SELL_PUT:
         if iv_rank >= IVR_RICH:
-            delta = 0.20   # wider OTM when premium is rich
+            delta = 0.20
             note = f"IVR {iv_rank:.0f} is rich — go wider OTM (0.20 delta)."
         else:
-            delta = 0.25   # standard
+            delta = 0.25
             note = f"IVR {iv_rank:.0f} >= {IVR_SELL_PUT} — standard 0.25 delta."
+
+        # Append any warning flags
+        if warnings:
+            note += " WARNINGS: " + "; ".join(warnings) + "."
+
         return Decision(
             Action.SELL_PUT, note,
             target_delta=delta, target_dte=35,
         )
 
     # Fallback — IV between 20 and 30
-    return Decision(Action.BUY_STOCK,
-                    f"IV rank {iv_rank:.0f} in dead zone (20-30). "
-                    "Prefer buying shares or waiting for IV expansion.")
+    reason = (f"IV rank {iv_rank:.0f} in dead zone (20-30). "
+              "Prefer buying shares or waiting for IV expansion.")
+    if warnings:
+        reason += " WARNINGS: " + "; ".join(warnings) + "."
+    return Decision(Action.BUY_STOCK, reason)
 
 
 # =============================================================================
