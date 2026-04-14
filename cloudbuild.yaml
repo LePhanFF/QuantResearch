@@ -1,0 +1,56 @@
+# Cloud Build config — builds and deploys the wheel dashboard to Cloud Run.
+#
+# Trigger setup (GCP Console > Cloud Build > Triggers):
+#   - Source:  this repo, branch "feature/wheel-dashboard" (or main after merge)
+#   - Config:  cloudbuild.yaml (this file, at repo root)
+#
+# Substitution variables (set in trigger or override at CLI):
+#   _REGION       defaults to us-central1
+#   _SERVICE      defaults to wheel-dashboard
+#   _REPO         defaults to wheel-repo
+#
+# Manual run:
+#   gcloud builds submit --config cloudbuild.yaml \
+#       --substitutions=_REGION=us-central1
+
+substitutions:
+  _REGION: us-central1
+  _SERVICE: wheel-dashboard
+  _REPO: wheel-repo
+
+steps:
+  # 1. Build the container image
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:latest
+      - -f
+      - option_strategies/Dockerfile
+      - option_strategies
+
+  # 2. Push to Artifact Registry
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - --all-tags
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}
+
+  # 3. Deploy to Cloud Run using the service manifest
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - replace
+      - option_strategies/service.yaml
+      - --region=${_REGION}
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wheel Strategy Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <h1>Wheel Strategy Dashboard</h1>
+        <div class="meta" id="scan-time">No data loaded</div>
+    </div>
+    <div class="controls">
+        <select id="filter-action" onchange="applyFilter()">
+            <option value="ALL">All Signals</option>
+            <option value="SELL_PUT">Sell Put</option>
+            <option value="BUY_STOCK">Buy Stock</option>
+            <option value="STAND_ASIDE">Stand Aside</option>
+        </select>
+        <button class="btn secondary" onclick="togglePlaybook()">Playbook</button>
+        <button class="btn" id="scan-btn" onclick="runScan()">Run Live Scan</button>
+    </div>
+</div>
+
+<div class="summary-bar" id="summary-bar"></div>
+
+<div class="main">
+    <!-- Opportunities table -->
+    <div class="table-wrap" id="table-section">
+        <table class="opp-table" id="opp-table">
+            <thead>
+                <tr>
+                    <th onclick="sortTable('ticker')">Ticker</th>
+                    <th onclick="sortTable('price')">Price</th>
+                    <th onclick="sortTable('day_change_pct')">Day %</th>
+                    <th onclick="sortTable('iv_rank')">IV Rank</th>
+                    <th onclick="sortTable('trend')">Trend</th>
+                    <th onclick="sortTable('pct_from_200_sma')">vs 200 SMA</th>
+                    <th onclick="sortTable('entry_action')">Signal</th>
+                    <th>CSP Strike</th>
+                    <th>CSP Prem</th>
+                    <th onclick="sortTable('csp_ann_roc_pct')">Ann ROC%</th>
+                    <th onclick="sortTable('csp_capital_required')">Capital</th>
+                    <th>If Assigned</th>
+                </tr>
+            </thead>
+            <tbody id="opp-body">
+                <tr><td colspan="12" class="loading-cell">
+                    <div class="spinner"></div>Click "Run Live Scan" to fetch data
+                </td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Detail cards (shown on row click) -->
+    <div id="detail-panel" class="detail-panel" style="display:none"></div>
+
+    <!-- Playbook (hidden by default) -->
+    <div class="playbook" id="playbook" style="display:none">
+        <h2>Decision Playbook</h2>
+        <div class="playbook-grid">
+            <div class="playbook-section">
+                <h3>Phase 1 -- When to Enter</h3>
+                <ul>
+                    <li><b class="green">SELL PUT</b> when IVR >= 50 at 0.20 delta, IVR 30-50 at 0.25 delta</li>
+                    <li><b class="blue">BUY STOCK</b> when IVR &lt; 20, or strong breakout, or div capture</li>
+                    <li><b class="yellow">STAND ASIDE</b> if earnings in DTE, or >10% below 200 SMA</li>
+                </ul>
+            </div>
+            <div class="playbook-section">
+                <h3>Phase 2 -- Put Management</h3>
+                <ul>
+                    <li>50% profit hit: <b>Close</b>, re-sell 30-45 DTE</li>
+                    <li>OTM, > 21 DTE: <b>Hold</b></li>
+                    <li>OTM, &lt;= 21 DTE: <b>Roll same strike</b> +30d</li>
+                    <li>ITM &lt; 3%: <b>Roll same strike</b> +30d for credit</li>
+                    <li>ITM 3-8%: <b>Roll down</b> 1-2 strikes +45d (credit only!)</li>
+                    <li>ITM > 8%: <b>Accept assignment</b></li>
+                </ul>
+            </div>
+            <div class="playbook-section">
+                <h3>Phase 3 -- Covered Calls After Assignment</h3>
+                <ul>
+                    <li>> 5% above cost basis: 0.30-0.40 delta (get called away)</li>
+                    <li>Near cost basis: 0.25 delta (standard)</li>
+                    <li>2-10% below basis: 0.15-0.20 delta (patient)</li>
+                    <li>> 10% below: 0.10-0.15 delta (wait for recovery)</li>
+                    <li><b>Never sell below cost basis</b></li>
+                </ul>
+            </div>
+            <div class="playbook-section">
+                <h3>Phase 4 -- Call Management</h3>
+                <ul>
+                    <li>50% profit: Close, re-sell</li>
+                    <li>ITM &lt;= 7 DTE, above basis: <b>Let call away</b> (cycle complete!)</li>
+                    <li>ITM &lt;= 7 DTE, below basis: Roll up and out</li>
+                    <li>Stock fell > 8%: Roll call down (never below basis)</li>
+                </ul>
+            </div>
+            <div class="playbook-section">
+                <h3>When to Buy Stock Outright</h3>
+                <ul>
+                    <li>IV Rank &lt; 20 -- premium too thin for CSP</li>
+                    <li>Strong breakout -- don't miss the move with a CSP</li>
+                    <li>Dividend capture -- ex-div before CSP expiry + low IV</li>
+                    <li>Core holding you never want called away</li>
+                    <li>Price at support in uptrend + low IV</li>
+                </ul>
+            </div>
+            <div class="playbook-section">
+                <h3>Concentration Limits</h3>
+                <ul>
+                    <li>Max 20% of account in any single underlying</li>
+                    <li>Max 35% in any single sector</li>
+                    <li>Keep 25% cash buffer for assignments</li>
+                    <li>DTE sweet spot: 30-45 days</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let scanData = null;
+let sortCol = 'iv_rank';
+let sortDir = -1; // -1 = desc
+
+window.addEventListener('DOMContentLoaded', () => loadLatest());
+
+async function loadLatest() {
+    try {
+        const res = await fetch('/api/latest');
+        if (res.ok) { scanData = await res.json(); render(); }
+    } catch(e) {}
+}
+
+async function runScan() {
+    const btn = document.getElementById('scan-btn');
+    btn.disabled = true; btn.textContent = 'Scanning...';
+    document.getElementById('opp-body').innerHTML =
+        '<tr><td colspan="12" class="loading-cell"><div class="spinner"></div>Fetching live data for 12 tickers...</td></tr>';
+    try {
+        const res = await fetch('/api/scan');
+        scanData = await res.json();
+        render();
+    } catch(e) {
+        document.getElementById('opp-body').innerHTML =
+            '<tr><td colspan="12" class="loading-cell">Scan failed</td></tr>';
+    }
+    btn.disabled = false; btn.textContent = 'Run Live Scan';
+}
+
+function render() {
+    if (!scanData) return;
+    document.getElementById('scan-time').textContent = `Last scan: ${scanData.generated}`;
+    const tickers = scanData.tickers.filter(t => !t.error);
+    renderSummary(tickers);
+    renderTable(tickers);
+}
+
+function renderSummary(tickers) {
+    const sp = tickers.filter(t => t.entry_action === 'SELL_PUT').length;
+    const bs = tickers.filter(t => t.entry_action === 'BUY_STOCK').length;
+    const sa = tickers.filter(t => t.entry_action === 'STAND_ASIDE').length;
+    const avgIvr = tickers.length ? (tickers.reduce((s,t) => s + (t.iv_rank||0), 0) / tickers.length).toFixed(0) : 0;
+    const avgRoc = tickers.length ? (tickers.reduce((s,t) => s + (t.csp_ann_roc_pct||0), 0) / tickers.length).toFixed(1) : 0;
+
+    document.getElementById('summary-bar').innerHTML = `
+        <div class="summary-card"><div class="label">Tickers</div><div class="value">${tickers.length}</div></div>
+        <div class="summary-card"><div class="label">Sell Put</div><div class="value green">${sp}</div></div>
+        <div class="summary-card"><div class="label">Buy Stock</div><div class="value blue">${bs}</div></div>
+        <div class="summary-card"><div class="label">Stand Aside</div><div class="value yellow">${sa}</div></div>
+        <div class="summary-card"><div class="label">Avg IVR</div><div class="value ${avgIvr > 50 ? 'green' : ''}">${avgIvr}</div></div>
+        <div class="summary-card"><div class="label">Avg Ann ROC</div><div class="value">${avgRoc}%</div></div>
+    `;
+}
+
+function renderTable(tickers) {
+    const filter = document.getElementById('filter-action').value;
+    let filtered = filter === 'ALL' ? tickers : tickers.filter(t => t.entry_action === filter);
+
+    filtered.sort((a, b) => {
+        let va = a[sortCol], vb = b[sortCol];
+        if (typeof va === 'string') return sortDir * va.localeCompare(vb);
+        return sortDir * ((va||0) - (vb||0));
+    });
+
+    const rows = filtered.map(t => {
+        const chgCls = t.day_change_pct >= 0 ? 'green' : 'red';
+        const smaCls = t.pct_from_200_sma >= 0 ? 'green' : 'red';
+        const sigCls = t.entry_action === 'SELL_PUT' ? 'sell-put'
+                     : t.entry_action === 'BUY_STOCK' ? 'buy-stock' : 'stand-aside';
+        const pctBasis = ((t.price / t.cost_basis_if_assigned - 1) * 100).toFixed(1);
+        const basisCls = pctBasis >= 0 ? 'green' : 'red';
+
+        return `<tr class="data-row-tr" onclick="showDetail('${t.ticker}')">
+            <td class="ticker-col"><b>${t.ticker}</b><br><span class="sub">${t.name}</span></td>
+            <td class="mono">$${t.price.toFixed(2)}</td>
+            <td class="mono ${chgCls}">${t.day_change_pct >= 0 ? '+' : ''}${t.day_change_pct.toFixed(2)}%</td>
+            <td class="mono ${t.iv_rank >= 50 ? 'green' : ''}">${t.iv_rank.toFixed(0)}</td>
+            <td><span class="trend-badge ${t.trend.includes('UP') ? 'up' : 'down'}">${t.trend}</span></td>
+            <td class="mono ${smaCls}">${t.pct_from_200_sma >= 0 ? '+' : ''}${t.pct_from_200_sma.toFixed(1)}%</td>
+            <td><span class="signal ${sigCls}">${t.entry_action.replace(/_/g,' ')}</span></td>
+            <td class="mono">$${t.csp_strike.toFixed(2)}</td>
+            <td class="mono">$${t.csp_premium.toFixed(2)}</td>
+            <td class="mono ${t.csp_ann_roc_pct >= 15 ? 'green' : ''}">${t.csp_ann_roc_pct.toFixed(1)}%</td>
+            <td class="mono">$${Number(t.csp_capital_required).toLocaleString()}</td>
+            <td class="mono"><span class="${basisCls}">$${t.cost_basis_if_assigned.toFixed(2)}</span><br>
+                <span class="sub">CC $${t.cc_strike.toFixed(2)} @ $${t.cc_premium.toFixed(2)}</span></td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('opp-body').innerHTML = rows || '<tr><td colspan="12" class="loading-cell">No matches</td></tr>';
+}
+
+function sortTable(col) {
+    if (sortCol === col) sortDir *= -1;
+    else { sortCol = col; sortDir = -1; }
+    render();
+}
+
+function applyFilter() { render(); }
+
+function showDetail(ticker) {
+    if (!scanData) return;
+    const t = scanData.tickers.find(x => x.ticker === ticker);
+    if (!t) return;
+    const panel = document.getElementById('detail-panel');
+    panel.style.display = 'block';
+    panel.innerHTML = `
+    <div class="detail-card">
+        <div class="detail-header">
+            <h2>${t.ticker} <span class="sub">${t.name}</span></h2>
+            <button class="btn secondary" onclick="document.getElementById('detail-panel').style.display='none'">Close</button>
+        </div>
+        <div class="detail-grid">
+            <div class="detail-section">
+                <h3>Market Data</h3>
+                <div class="detail-row"><span>Price</span><span class="mono">$${t.price.toFixed(2)}</span></div>
+                <div class="detail-row"><span>Day Change</span><span class="mono ${t.day_change_pct>=0?'green':'red'}">${t.day_change_pct>=0?'+':''}${t.day_change_pct.toFixed(2)}%</span></div>
+                <div class="detail-row"><span>6w Return</span><span class="mono ${t.return_6w_pct>=0?'green':'red'}">${t.return_6w_pct>=0?'+':''}${t.return_6w_pct.toFixed(1)}%</span></div>
+                <div class="detail-row"><span>6w Max DD</span><span class="mono red">${t.max_dd_6w_pct.toFixed(1)}%</span></div>
+                <div class="detail-row"><span>200 SMA</span><span class="mono">$${t.sma_200.toFixed(2)}</span></div>
+                <div class="detail-row"><span>vs 200 SMA</span><span class="mono ${t.pct_from_200_sma>=0?'green':'red'}">${t.pct_from_200_sma>=0?'+':''}${t.pct_from_200_sma.toFixed(1)}%</span></div>
+                <div class="detail-row"><span>IV Rank</span><span class="mono">${t.iv_rank.toFixed(1)}</span></div>
+                <div class="detail-row"><span>HV 30d</span><span class="mono">${t.hv_30d.toFixed(1)}%</span></div>
+                <div class="detail-row"><span>Trend</span><span class="mono">${t.trend}</span></div>
+            </div>
+            <div class="detail-section">
+                <h3>Entry Signal</h3>
+                <div class="detail-row"><span>Action</span><span class="signal ${t.entry_action==='SELL_PUT'?'sell-put':t.entry_action==='BUY_STOCK'?'buy-stock':'stand-aside'}">${t.entry_action.replace(/_/g,' ')}</span></div>
+                <div class="detail-row"><span>Delta</span><span class="mono">${t.entry_delta || 'N/A'}</span></div>
+                <div class="detail-row"><span>DTE</span><span class="mono">${t.entry_dte || 'N/A'} days</span></div>
+                <div class="detail-reason">${t.entry_reason}</div>
+            </div>
+            <div class="detail-section">
+                <h3>CSP Setup (if selling put)</h3>
+                <div class="detail-row"><span>Strike</span><span class="mono">$${t.csp_strike.toFixed(2)}</span></div>
+                <div class="detail-row"><span>Premium</span><span class="mono">$${t.csp_premium.toFixed(2)}</span></div>
+                <div class="detail-row"><span>Delta</span><span class="mono">${t.csp_delta.toFixed(3)}</span></div>
+                <div class="detail-row"><span>Ann. ROC</span><span class="mono">${t.csp_ann_roc_pct.toFixed(1)}%</span></div>
+                <div class="detail-row"><span>Capital Required</span><span class="mono">$${Number(t.csp_capital_required).toLocaleString()}</span></div>
+            </div>
+            <div class="detail-section">
+                <h3>If Assigned -- Sell Covered Call</h3>
+                <div class="detail-row"><span>Cost Basis</span><span class="mono">$${t.cost_basis_if_assigned.toFixed(2)}</span></div>
+                <div class="detail-row"><span>CC Strike</span><span class="mono">$${t.cc_strike.toFixed(2)}</span></div>
+                <div class="detail-row"><span>CC Premium</span><span class="mono">$${t.cc_premium.toFixed(2)}</span></div>
+                <div class="detail-row"><span>CC Delta</span><span class="mono">${t.share_mgmt_delta || 'N/A'}</span></div>
+                <div class="detail-reason">${t.share_mgmt_reason}</div>
+            </div>
+            <div class="detail-section">
+                <h3>Put Management (if position open)</h3>
+                <div class="detail-row"><span>Action</span><span class="mono">${t.put_mgmt_action.replace(/_/g,' ')}</span></div>
+                <div class="detail-reason">${t.put_mgmt_reason}</div>
+            </div>
+        </div>
+    </div>`;
+    panel.scrollIntoView({behavior: 'smooth'});
+}
+
+function togglePlaybook() {
+    const el = document.getElementById('playbook');
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+</script>
+</body>
+</html>
