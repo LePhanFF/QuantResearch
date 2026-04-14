@@ -487,6 +487,8 @@ function changeTF(tf) {
 function renderChart(data) {
     const cc = document.getElementById('chart-container');
     const rc = document.getElementById('rsi-container');
+    if (mainChart) { mainChart.remove(); mainChart = null; }
+    if (rsiChart) { rsiChart.remove(); rsiChart = null; }
     cc.innerHTML = ''; rc.innerHTML = '';
 
     const intraday = data.interval && data.interval !== '1d';
@@ -960,6 +962,9 @@ let eqChart = null, ddChart = null;
 
 async function loadBacktest() {
     document.getElementById('backtest-stats').innerHTML = '<span class="dim">Loading 5Y backtest...</span>';
+    // Destroy old chart instances before recreating
+    if (eqChart) { eqChart.remove(); eqChart = null; }
+    if (ddChart) { ddChart.remove(); ddChart = null; }
     document.getElementById('equity-chart').innerHTML = '';
     document.getElementById('dd-chart').innerHTML = '';
     document.getElementById('annual-table-wrap').innerHTML = '';
