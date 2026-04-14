@@ -203,11 +203,11 @@ async def api_fundamentals(ticker: str):
 
 
 @app.get("/api/basket")
-async def api_basket(size: int = 50000):
+async def api_basket(size: int = 50000, max_dd: int = 20):
     """Build an optimized portfolio basket for a given account size.
 
-    Balances yield, growth, and risk — constrains max drawdown to ~20%.
-    Returns allocations for selling puts, buying stock, and covered calls.
+    Balances yield, growth, and risk.
+    max_dd: maximum portfolio drawdown target (5-40%).
     """
     import math
     import numpy as np
@@ -292,11 +292,12 @@ async def api_basket(size: int = 50000):
     scored.sort(key=lambda x: x["score"], reverse=True)
 
     # Greedy allocation with concentration limits
-    cash_buffer = 0.25
+    # More aggressive risk = less cash buffer, more deployment
+    max_dd_target = max(5, min(40, max_dd))
+    cash_buffer = max(0.15, 0.30 - (max_dd_target - 10) * 0.005)
     deployable = size * (1 - cash_buffer)
     max_per_ticker = size * 0.20
     max_per_sector = size * 0.35
-    max_dd_target = 20.0  # max portfolio drawdown %
 
     allocated = []
     sector_used = {}
@@ -334,8 +335,15 @@ async def api_basket(size: int = 50000):
         total_roc += s["roc_pct"] * (cost / size)
         total_dd_weighted += projected_dd
 
+    # Estimate annual income
+    annual_div_income = sum(a["div_yield"] / 100 * a["capital"] for a in allocated)
+    annual_premium_income = sum(a["roc_pct"] / 100 * a["capital"] for a in allocated)
+    total_annual_income = annual_div_income + annual_premium_income
+
     return JSONResponse({
         "account_size": size,
+        "max_dd_target": max_dd_target,
+        "cash_buffer_pct": round(cash_buffer * 100, 1),
         "deployed": round(total_deployed, 0),
         "deployed_pct": round(total_deployed / size * 100, 1),
         "cash_reserve": round(size - total_deployed, 0),
@@ -344,6 +352,13 @@ async def api_basket(size: int = 50000):
         "weighted_yield_pct": round(total_yield, 2),
         "weighted_roc_pct": round(total_roc, 1),
         "est_drawdown_pct": round(total_dd_weighted, 1),
+        "income": {
+            "annual_dividends": round(annual_div_income, 0),
+            "annual_premiums": round(annual_premium_income, 0),
+            "annual_total": round(total_annual_income, 0),
+            "monthly_total": round(total_annual_income / 12, 0),
+            "yield_on_account_pct": round(total_annual_income / size * 100, 1),
+        },
         "allocations": allocated,
         "sectors": {k: round(v / size * 100, 1) for k, v in sector_used.items()},
     })

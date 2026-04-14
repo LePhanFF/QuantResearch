@@ -119,14 +119,37 @@
     <div class="basket-header">
         <h2>PORTFOLIO BASKET BUILDER</h2>
         <div class="basket-controls">
-            <button class="basket-size-btn" onclick="buildBasket(25000)">$25K</button>
-            <button class="basket-size-btn active" onclick="buildBasket(50000)">$50K</button>
-            <button class="basket-size-btn" onclick="buildBasket(100000)">$100K</button>
-            <button class="basket-size-btn" onclick="buildBasket(300000)">$300K</button>
-            <button class="basket-size-btn" onclick="buildBasket(1000000)">$1M</button>
+            <button class="basket-size-btn" onclick="setBasketSize(25000)">$25K</button>
+            <button class="basket-size-btn active" onclick="setBasketSize(50000)">$50K</button>
+            <button class="basket-size-btn" onclick="setBasketSize(100000)">$100K</button>
+            <button class="basket-size-btn" onclick="setBasketSize(300000)">$300K</button>
+            <button class="basket-size-btn" onclick="setBasketSize(1000000)">$1M</button>
         </div>
     </div>
+    <!-- Risk slider -->
+    <div class="risk-slider-wrap">
+        <span class="slider-label">RISK TOLERANCE</span>
+        <span class="slider-tag conservative" id="risk-tag-lo">Conservative</span>
+        <input type="range" id="risk-slider" min="5" max="40" value="20" step="1" oninput="onRiskSlider()">
+        <span class="slider-tag aggressive" id="risk-tag-hi">Aggressive</span>
+        <span class="slider-val" id="risk-val">Max DD: 20%</span>
+    </div>
     <div class="basket-summary" id="basket-summary"></div>
+    <!-- Charts row -->
+    <div class="basket-charts-row">
+        <div class="basket-chart-box">
+            <h4>TICKER ALLOCATION</h4>
+            <canvas id="pie-ticker" width="280" height="280"></canvas>
+        </div>
+        <div class="basket-chart-box">
+            <h4>SECTOR ALLOCATION</h4>
+            <canvas id="pie-sector" width="280" height="280"></canvas>
+        </div>
+        <div class="basket-chart-box income-box">
+            <h4>ESTIMATED ANNUAL INCOME</h4>
+            <div id="income-estimate"></div>
+        </div>
+    </div>
     <div class="basket-table-wrap">
         <table class="basket-table" id="basket-table">
             <thead><tr>
@@ -779,13 +802,25 @@ function renderFundamentals(d) {
 }
 
 // ── Basket Builder ────────────────────────────────────────────
-async function buildBasket(size) {
-    document.querySelectorAll('.basket-size-btn').forEach(b => {
-        b.classList.toggle('active', b.textContent.includes(size >= 1000000 ? '1M' : '$'+(size/1000)+'K'));
-    });
-    document.getElementById('basket-body').innerHTML = '<tr><td colspan="15" class="empty-msg"><div class="spinner"></div>Building optimal basket...</td></tr>';
+let basketSize = 50000, basketMaxDD = 20;
+
+function setBasketSize(s) {
+    basketSize = s;
+    document.querySelectorAll('.basket-size-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    buildBasket();
+}
+
+function onRiskSlider() {
+    basketMaxDD = parseInt(document.getElementById('risk-slider').value);
+    document.getElementById('risk-val').textContent = `Max DD: ${basketMaxDD}%`;
+    buildBasket();
+}
+
+async function buildBasket() {
+    document.getElementById('basket-body').innerHTML = '<tr><td colspan="15" class="empty-msg"><div class="spinner"></div>Optimizing basket...</td></tr>';
     try {
-        const r = await fetch(`/api/basket?size=${size}`);
+        const r = await fetch(`/api/basket?size=${basketSize}&max_dd=${basketMaxDD}`);
         const d = await r.json();
         if (d.error) { document.getElementById('basket-body').innerHTML = `<tr><td colspan="15" class="empty-msg">${d.error}</td></tr>`; return; }
         renderBasket(d);
@@ -794,17 +829,85 @@ async function buildBasket(size) {
     }
 }
 
+const PIE_COLORS = ['#22c55e','#3b82f6','#eab308','#ef4444','#a855f7','#06b6d4','#f97316',
+    '#ec4899','#14b8a6','#8b5cf6','#84cc16','#f43f5e','#0ea5e9','#d946ef',
+    '#fbbf24','#34d399','#fb7185','#a3e635','#38bdf8','#c084fc'];
+
+function drawPie(canvasId, labels, values, colors) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const cx = w/2, cy = h/2, r = Math.min(w,h)/2 - 30;
+    ctx.clearRect(0, 0, w, h);
+
+    const total = values.reduce((s,v) => s+v, 0);
+    if (total === 0) return;
+
+    let startAngle = -Math.PI/2;
+    const slices = [];
+    for (let i = 0; i < labels.length; i++) {
+        const pct = values[i] / total;
+        const sweep = pct * Math.PI * 2;
+        const midAngle = startAngle + sweep / 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, startAngle, startAngle + sweep);
+        ctx.closePath();
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fill();
+        ctx.strokeStyle = '#0f1117';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Label if slice is big enough
+        if (pct > 0.04) {
+            const lx = cx + Math.cos(midAngle) * (r * 0.65);
+            const ly = cy + Math.sin(midAngle) * (r * 0.65);
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px JetBrains Mono, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`${labels[i]}`, lx, ly - 6);
+            ctx.fillText(`${(pct*100).toFixed(0)}%`, lx, ly + 6);
+        }
+        startAngle += sweep;
+    }
+}
+
 function renderBasket(d) {
-    // Summary
+    const inc = d.income;
+    const acctLabel = d.account_size >= 1000000 ? `$${(d.account_size/1e6).toFixed(0)}M` : `$${(d.account_size/1000).toFixed(0)}K`;
+
+    // Summary strip
     document.getElementById('basket-summary').innerHTML = `
-        <div class="strip-item"><span class="strip-label">ACCOUNT</span><span class="strip-val">$${(d.account_size/1000).toFixed(0)}K</span></div>
+        <div class="strip-item"><span class="strip-label">ACCOUNT</span><span class="strip-val">${acctLabel}</span></div>
         <div class="strip-item"><span class="strip-label">DEPLOYED</span><span class="strip-val">${d.deployed_pct}%</span></div>
-        <div class="strip-item"><span class="strip-label">CASH RESERVE</span><span class="strip-val green">$${Number(d.cash_reserve).toLocaleString()}</span></div>
+        <div class="strip-item"><span class="strip-label">CASH</span><span class="strip-val green">$${Number(d.cash_reserve).toLocaleString()}</span></div>
         <div class="strip-item"><span class="strip-label">POSITIONS</span><span class="strip-val">${d.positions}</span></div>
-        <div class="strip-item"><span class="strip-label">WGTD YIELD</span><span class="strip-val blue">${d.weighted_yield_pct}%</span></div>
-        <div class="strip-item"><span class="strip-label">WGTD ROC</span><span class="strip-val green">${d.weighted_roc_pct}%</span></div>
-        <div class="strip-item"><span class="strip-label">EST DRAWDOWN</span><span class="strip-val ${d.est_drawdown_pct > 15 ? 'red' : 'yellow'}">${d.est_drawdown_pct}%</span></div>
+        <div class="strip-item"><span class="strip-label">YIELD</span><span class="strip-val blue">${d.weighted_yield_pct}%</span></div>
+        <div class="strip-item"><span class="strip-label">ROC</span><span class="strip-val green">${d.weighted_roc_pct}%</span></div>
+        <div class="strip-item"><span class="strip-label">EST DD</span><span class="strip-val ${d.est_drawdown_pct > d.max_dd_target*0.8 ? 'red' : 'yellow'}">${d.est_drawdown_pct}%</span></div>
+        <div class="strip-item"><span class="strip-label">MAX DD TARGET</span><span class="strip-val">${d.max_dd_target}%</span></div>
     `;
+
+    // Income estimate
+    document.getElementById('income-estimate').innerHTML = `
+        <div class="income-row"><span>Dividend Income</span><span class="mono green">$${Number(inc.annual_dividends).toLocaleString()}/yr</span></div>
+        <div class="income-row"><span>Premium Income (est.)</span><span class="mono green">$${Number(inc.annual_premiums).toLocaleString()}/yr</span></div>
+        <div class="income-row total"><span>Total Annual Income</span><span class="mono" style="color:var(--green);font-size:18px">$${Number(inc.annual_total).toLocaleString()}</span></div>
+        <div class="income-row"><span>Monthly Income</span><span class="mono green">$${Number(inc.monthly_total).toLocaleString()}/mo</span></div>
+        <div class="income-row"><span>Yield on Account</span><span class="mono blue">${inc.yield_on_account_pct}%</span></div>
+    `;
+
+    // Pie charts
+    const tLabels = d.allocations.map(a => a.ticker);
+    const tValues = d.allocations.map(a => a.capital);
+    drawPie('pie-ticker', tLabels, tValues, PIE_COLORS);
+
+    const sLabels = Object.keys(d.sectors);
+    const sValues = Object.values(d.sectors);
+    drawPie('pie-sector', sLabels, sValues, PIE_COLORS);
 
     // Table
     document.getElementById('basket-body').innerHTML = d.allocations.map((a, i) => {
@@ -828,11 +931,10 @@ function renderBasket(d) {
         </tr>`;
     }).join('');
 
-    // Sector breakdown
-    const sectors = d.sectors;
+    // Sector bars
     document.getElementById('basket-sectors').innerHTML = '<h4>SECTOR ALLOCATION</h4><div class="sector-bars">' +
-        Object.entries(sectors).sort((a,b) => b[1]-a[1]).map(([s, pct]) =>
-            `<div class="sector-bar-row"><span class="sector-name">${s}</span><div class="sector-bar"><div class="sector-fill" style="width:${pct*3}px"></div></div><span class="mono">${pct}%</span></div>`
+        Object.entries(d.sectors).sort((a,b) => b[1]-a[1]).map(([s, pct], i) =>
+            `<div class="sector-bar-row"><span class="sector-name">${s}</span><div class="sector-bar"><div class="sector-fill" style="width:${pct*3}px;background:${PIE_COLORS[i%PIE_COLORS.length]}"></div></div><span class="mono">${pct}%</span></div>`
         ).join('') + '</div>';
 }
 </script>
