@@ -150,6 +150,16 @@
             <div id="income-estimate"></div>
         </div>
     </div>
+    <!-- 5-Year equity curve + drawdown -->
+    <div class="backtest-section">
+        <div class="backtest-header">
+            <h4>5-YEAR PORTFOLIO BACKTEST</h4>
+            <div id="backtest-stats" class="backtest-stats"></div>
+        </div>
+        <div id="equity-chart" class="equity-chart"></div>
+        <div id="dd-chart" class="dd-chart"></div>
+        <div id="annual-table-wrap" class="annual-table-wrap"></div>
+    </div>
     <div class="basket-table-wrap">
         <table class="basket-table" id="basket-table">
             <thead><tr>
@@ -936,6 +946,103 @@ function renderBasket(d) {
         Object.entries(d.sectors).sort((a,b) => b[1]-a[1]).map(([s, pct], i) =>
             `<div class="sector-bar-row"><span class="sector-name">${s}</span><div class="sector-bar"><div class="sector-fill" style="width:${pct*3}px;background:${PIE_COLORS[i%PIE_COLORS.length]}"></div></div><span class="mono">${pct}%</span></div>`
         ).join('') + '</div>';
+
+    // Load backtest
+    loadBacktest();
+}
+
+let eqChart = null, ddChart = null;
+
+async function loadBacktest() {
+    document.getElementById('backtest-stats').innerHTML = '<span class="dim">Loading 5Y backtest...</span>';
+    document.getElementById('equity-chart').innerHTML = '';
+    document.getElementById('dd-chart').innerHTML = '';
+    document.getElementById('annual-table-wrap').innerHTML = '';
+    try {
+        const r = await fetch(`/api/basket/backtest?size=${basketSize}&max_dd=${basketMaxDD}`);
+        const d = await r.json();
+        if (d.error) { document.getElementById('backtest-stats').innerHTML = `<span class="red">${d.error}</span>`; return; }
+        renderBacktest(d);
+    } catch(e) {
+        document.getElementById('backtest-stats').innerHTML = '<span class="red">Backtest failed</span>';
+    }
+}
+
+function renderBacktest(d) {
+    const s = d.stats;
+
+    // Stats bar
+    document.getElementById('backtest-stats').innerHTML = `
+        <span>Total: <b class="${s.total_return_pct>=0?'green':'red'}">${s.total_return_pct>0?'+':''}${s.total_return_pct}%</b></span>
+        <span>Ann: <b class="${s.ann_return_pct>=0?'green':'red'}">${s.ann_return_pct>0?'+':''}${s.ann_return_pct}%</b></span>
+        <span>Max DD: <b class="red">${s.max_drawdown_pct.toFixed(1)}%</b></span>
+        <span>Sharpe: <b>${s.sharpe}</b></span>
+        <span>Final: <b class="green">$${Number(s.final_value).toLocaleString()}</b></span>
+    `;
+
+    // Equity curve
+    const ec = document.getElementById('equity-chart');
+    eqChart = LightweightCharts.createChart(ec, {
+        width: ec.clientWidth, height: 220,
+        layout: { background:{color:'#1a1d27'}, textColor:'#8b8fa3', fontSize:10 },
+        grid: { vertLines:{color:'#2e3140'}, horzLines:{color:'#2e3140'} },
+        rightPriceScale: { borderColor:'#2e3140' },
+        timeScale: { borderColor:'#2e3140' },
+    });
+    const eqLine = eqChart.addAreaSeries({
+        topColor:'rgba(34,197,94,0.3)', bottomColor:'rgba(34,197,94,0.02)',
+        lineColor:'#22c55e', lineWidth:2,
+    });
+    eqLine.setData(d.equity);
+
+    // Benchmark (SPY)
+    if (d.benchmark && d.benchmark.length > 0) {
+        const benchLine = eqChart.addLineSeries({ color:'#8b8fa3', lineWidth:1, lineStyle:2 });
+        benchLine.setData(d.benchmark);
+    }
+    eqChart.timeScale().fitContent();
+
+    // Drawdown chart
+    const dc = document.getElementById('dd-chart');
+    ddChart = LightweightCharts.createChart(dc, {
+        width: dc.clientWidth, height: 100,
+        layout: { background:{color:'#1a1d27'}, textColor:'#8b8fa3', fontSize:10 },
+        grid: { vertLines:{color:'#2e3140'}, horzLines:{color:'#2e3140'} },
+        rightPriceScale: { borderColor:'#2e3140' },
+        timeScale: { borderColor:'#2e3140', visible:false },
+    });
+    const ddArea = ddChart.addAreaSeries({
+        topColor:'rgba(239,68,68,0.05)', bottomColor:'rgba(239,68,68,0.3)',
+        lineColor:'#ef4444', lineWidth:1,
+    });
+    ddArea.setData(d.drawdown);
+
+    // Sync timescales
+    eqChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+        if (range) ddChart.timeScale().setVisibleLogicalRange(range);
+    });
+    ddChart.timeScale().fitContent();
+
+    // Resize observer
+    new ResizeObserver(() => {
+        eqChart.applyOptions({width: ec.clientWidth});
+        ddChart.applyOptions({width: dc.clientWidth});
+    }).observe(ec);
+
+    // Annual returns table
+    if (d.annual && d.annual.length > 0) {
+        let html = '<table class="annual-table"><thead><tr><th>Year</th><th>Return</th><th>Max DD</th><th>End Value</th></tr></thead><tbody>';
+        for (const yr of d.annual) {
+            html += `<tr>
+                <td class="mono">${yr.year}</td>
+                <td class="mono ${yr.return_pct>=0?'green':'red'}">${yr.return_pct>0?'+':''}${yr.return_pct}%</td>
+                <td class="mono red">${yr.max_dd_pct.toFixed(1)}%</td>
+                <td class="mono">$${Number(yr.end_value).toLocaleString()}</td>
+            </tr>`;
+        }
+        html += '</tbody></table>';
+        document.getElementById('annual-table-wrap').innerHTML = html;
+    }
 }
 </script>
 </body>

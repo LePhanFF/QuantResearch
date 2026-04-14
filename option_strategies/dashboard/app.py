@@ -364,6 +364,123 @@ async def api_basket(size: int = 50000, max_dd: int = 20):
     })
 
 
+@app.get("/api/basket/backtest")
+async def api_basket_backtest(size: int = 50000, max_dd: int = 20):
+    """Backtest the basket allocation over the last 5 years.
+
+    Uses the same allocation logic as /api/basket, then downloads
+    5Y daily data for each ticker, computes weighted portfolio
+    equity curve, drawdown, and annual returns.
+    """
+    import numpy as np
+    import pandas as pd
+    import yfinance as yf
+
+    # Get the basket allocation by calling our own endpoint
+    basket_resp = await api_basket(size=size, max_dd=max_dd)
+    basket = __import__("json").loads(basket_resp.body.decode())
+
+    if "error" in basket or not basket.get("allocations"):
+        return JSONResponse({"error": "No basket data. Run /api/scan first."}, status_code=400)
+
+    allocations = basket["allocations"]
+    tickers = [a["ticker"] for a in allocations]
+    weights = {a["ticker"]: a["capital"] / basket["deployed"] for a in allocations}
+
+    # Download 5Y daily data for all tickers at once
+    if not tickers:
+        return JSONResponse({"error": "Empty basket"}, status_code=400)
+
+    data = yf.download(tickers, period="5y", interval="1d", progress=False)
+    if data.empty:
+        return JSONResponse({"error": "No historical data"}, status_code=400)
+
+    # Extract close prices
+    if isinstance(data.columns, pd.MultiIndex):
+        close = data["Close"]
+    else:
+        close = data[["Close"]]
+        close.columns = [tickers[0]]
+
+    close = close.dropna(how="all").ffill()
+
+    # Compute daily returns for each ticker
+    returns = close.pct_change().fillna(0)
+
+    # Weighted portfolio daily returns
+    port_returns = pd.Series(0.0, index=returns.index)
+    for t in tickers:
+        if t in returns.columns:
+            port_returns += returns[t] * weights.get(t, 0)
+
+    # Add estimated daily premium income (spread evenly)
+    daily_premium = basket["income"]["annual_premiums"] / 252 / basket["deployed"]
+    port_returns += daily_premium
+
+    # Equity curve
+    equity = (1 + port_returns).cumprod() * size
+    equity_list = [{"time": dt.strftime("%Y-%m-%d"), "value": round(float(v), 2)}
+                   for dt, v in equity.items()]
+
+    # Buy & hold SPY benchmark
+    spy_col = "SPY" if "SPY" in close.columns else None
+    bench_list = []
+    if spy_col:
+        spy_ret = returns[spy_col]
+        spy_eq = (1 + spy_ret).cumprod() * size
+        bench_list = [{"time": dt.strftime("%Y-%m-%d"), "value": round(float(v), 2)}
+                      for dt, v in spy_eq.items()]
+
+    # Drawdown series
+    peak = equity.cummax()
+    dd = (equity - peak) / peak * 100
+    dd_list = [{"time": dt.strftime("%Y-%m-%d"), "value": round(float(v), 2)}
+               for dt, v in dd.items()]
+
+    # Stats
+    total_days = len(equity)
+    years = total_days / 252
+    total_return = (equity.iloc[-1] / equity.iloc[0] - 1) * 100
+    ann_return = ((equity.iloc[-1] / equity.iloc[0]) ** (1 / max(years, 0.1)) - 1) * 100
+    max_drawdown = float(dd.min())
+    sharpe = float(port_returns.mean() / port_returns.std() * np.sqrt(252)) if port_returns.std() > 0 else 0
+
+    # Annual breakdown
+    annual = []
+    for year in sorted(equity.index.year.unique()):
+        yr_eq = equity[equity.index.year == year]
+        if len(yr_eq) < 2:
+            continue
+        yr_ret = (yr_eq.iloc[-1] / yr_eq.iloc[0] - 1) * 100
+        yr_dd_series = dd[dd.index.year == year]
+        yr_dd = float(yr_dd_series.min()) if len(yr_dd_series) > 0 else 0
+        annual.append({
+            "year": int(year),
+            "return_pct": round(yr_ret, 1),
+            "max_dd_pct": round(yr_dd, 1),
+            "end_value": round(float(yr_eq.iloc[-1]), 0),
+        })
+
+    return JSONResponse({
+        "account_size": size,
+        "max_dd_target": max_dd,
+        "positions": len(tickers),
+        "tickers": tickers,
+        "years": round(years, 1),
+        "stats": {
+            "total_return_pct": round(total_return, 1),
+            "ann_return_pct": round(ann_return, 1),
+            "max_drawdown_pct": round(max_drawdown, 1),
+            "sharpe": round(sharpe, 2),
+            "final_value": round(float(equity.iloc[-1]), 0),
+        },
+        "annual": annual,
+        "equity": equity_list,
+        "benchmark": bench_list,
+        "drawdown": dd_list,
+    })
+
+
 @app.get("/api/options/{ticker}")
 async def api_options(ticker: str, expiry: str | None = None):
     """Return option chain (puts + calls) for a ticker.
