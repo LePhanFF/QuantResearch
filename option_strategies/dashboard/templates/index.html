@@ -548,12 +548,11 @@ function renderChain() {
     const body = document.getElementById('chain-body');
     const spot = chainData.spot || 0;
 
-    // Filter to strikes within ~15% of spot for readability
-    const range = spot * 0.15;
-    const puts = chainData.puts.filter(o => Math.abs(o.strike - spot) <= range);
-    const calls = chainData.calls.filter(o => Math.abs(o.strike - spot) <= range);
+    // Show ALL strikes — no filtering
+    const puts = chainData.puts;
+    const calls = chainData.calls;
 
-    // Get all strikes in range
+    // Get all strikes
     const strikeSet = new Set();
     puts.forEach(o => strikeSet.add(o.strike));
     calls.forEach(o => strikeSet.add(o.strike));
@@ -565,42 +564,76 @@ function renderChain() {
     const showPuts = chainView === 'both' || chainView === 'puts';
     const showCalls = chainView === 'both' || chainView === 'calls';
 
+    // Helper: display price (use last if bid/ask are 0 = after hours)
+    function px(o, field) {
+        if (!o) return '';
+        const v = o[field];
+        if (v && v > 0) return v.toFixed(2);
+        return '';
+    }
+    function bestPrice(o) {
+        if (!o) return '';
+        if (o.mid > 0) return '$' + o.mid.toFixed(2);
+        if (o.last > 0) return '$' + o.last.toFixed(2);
+        return '';
+    }
+    function fmtNum(v) { return v ? v.toLocaleString() : ''; }
+
     let html = '<table class="chain-table"><thead><tr>';
-    if (showCalls) html += '<th>OI</th><th>Vol</th><th>IV%</th><th>Bid</th><th>Ask</th><th class="call-label">CALL</th>';
+    if (showCalls) html += '<th>OI</th><th>Vol</th><th>IV%</th><th>Delta</th><th>Bid</th><th>Ask</th><th>Last</th><th class="call-label">CALL</th>';
     html += '<th class="strike-col">Strike</th>';
-    if (showPuts) html += '<th class="put-label">PUT</th><th>Bid</th><th>Ask</th><th>IV%</th><th>Vol</th><th>OI</th>';
+    if (showPuts) html += '<th class="put-label">PUT</th><th>Last</th><th>Bid</th><th>Ask</th><th>Delta</th><th>IV%</th><th>Vol</th><th>OI</th>';
     html += '</tr></thead><tbody>';
+
+    // Find ATM strike
+    let atmStrike = strikes[0];
+    let atmDist = Infinity;
+    for (const s of strikes) { const d = Math.abs(s - spot); if (d < atmDist) { atmDist = d; atmStrike = s; } }
 
     for (const strike of strikes) {
         const c = callMap[strike] || {};
         const p = putMap[strike] || {};
-        const isATM = spot > 0 && Math.abs(strike - spot) < (strikes.length > 1 ? (strikes[1] - strikes[0]) * 0.6 : 1);
+        const isATM = strike === atmStrike;
         const rowClass = isATM ? ' atm-row' : (strike < spot ? ' itm-put' : (strike > spot ? ' itm-call' : ''));
+
+        // Delta display helper
+        function fmtDelta(d) {
+            if (d == null) return '';
+            return (d >= 0 ? '+' : '') + d.toFixed(2);
+        }
 
         html += `<tr class="chain-row${rowClass}">`;
         if (showCalls) {
-            html += `<td class="mono dim">${c.oi||''}</td>`;
-            html += `<td class="mono dim">${c.volume||''}</td>`;
+            html += `<td class="mono dim">${fmtNum(c.oi)}</td>`;
+            html += `<td class="mono dim">${fmtNum(c.volume)}</td>`;
             html += `<td class="mono">${c.iv||''}</td>`;
-            html += `<td class="mono green">${c.bid||''}</td>`;
-            html += `<td class="mono green">${c.ask||''}</td>`;
-            html += `<td class="mono call-price">${c.mid ? '$'+c.mid.toFixed(2) : ''}</td>`;
+            html += `<td class="mono delta-col">${fmtDelta(c.delta)}</td>`;
+            html += `<td class="mono green">${px(c,'bid')}</td>`;
+            html += `<td class="mono green">${px(c,'ask')}</td>`;
+            html += `<td class="mono dim">${px(c,'last')}</td>`;
+            html += `<td class="mono call-price">${bestPrice(c)}</td>`;
         }
         html += `<td class="strike-col${isATM?' atm':''}">$${strike.toFixed(2)}</td>`;
         if (showPuts) {
-            html += `<td class="mono put-price">${p.mid ? '$'+p.mid.toFixed(2) : ''}</td>`;
-            html += `<td class="mono red">${p.bid||''}</td>`;
-            html += `<td class="mono red">${p.ask||''}</td>`;
+            html += `<td class="mono put-price">${bestPrice(p)}</td>`;
+            html += `<td class="mono dim">${px(p,'last')}</td>`;
+            html += `<td class="mono red">${px(p,'bid')}</td>`;
+            html += `<td class="mono red">${px(p,'ask')}</td>`;
+            html += `<td class="mono delta-col">${fmtDelta(p.delta)}</td>`;
             html += `<td class="mono">${p.iv||''}</td>`;
-            html += `<td class="mono dim">${p.volume||''}</td>`;
-            html += `<td class="mono dim">${p.oi||''}</td>`;
+            html += `<td class="mono dim">${fmtNum(p.volume)}</td>`;
+            html += `<td class="mono dim">${fmtNum(p.oi)}</td>`;
         }
         html += '</tr>';
     }
 
     html += '</tbody></table>';
-    if (spot) html += `<div class="chain-spot">Spot: $${spot.toFixed(2)} | ${strikes.length} strikes shown (${chainView})</div>`;
+    if (spot) html += `<div class="chain-spot">Spot: $${spot.toFixed(2)} | ${strikes.length} strikes | Bid/Ask live during market hours, Last shown after hours</div>`;
     body.innerHTML = html;
+
+    // Auto-scroll to ATM row
+    const atmRow = body.querySelector('.atm-row');
+    if (atmRow) atmRow.scrollIntoView({block:'center', behavior:'smooth'});
 }
 </script>
 </body>

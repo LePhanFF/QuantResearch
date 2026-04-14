@@ -159,20 +159,51 @@ async def api_options(ticker: str, expiry: str | None = None):
         except (TypeError, ValueError):
             return default
 
+    # Compute days to expiry for delta calc
+    from datetime import datetime as _dt
+    try:
+        exp_date = _dt.strptime(expiry, "%Y-%m-%d")
+        dte = max((exp_date - _dt.now()).days, 1)
+    except Exception:
+        dte = 30
+
+    from option_pricing import black_scholes_put as _bs_put, black_scholes_call as _bs_call
+
+    def _calc_delta(strike, iv_pct, side):
+        """Estimate delta using Black-Scholes."""
+        if not spot or spot <= 0 or iv_pct <= 0:
+            return None
+        T = dte / 365
+        sigma = iv_pct / 100
+        try:
+            if side == "CALL":
+                q = _bs_call(spot, strike, T, 0.045, sigma)
+                return round(q.delta, 3)
+            else:
+                q = _bs_put(spot, strike, T, 0.045, sigma)
+                return round(q.delta, 3)
+        except Exception:
+            return None
+
     def clean(df, side):
         rows = []
         for _, r in df.iterrows():
             bid = safe_float(r.get("bid"))
             ask = safe_float(r.get("ask"))
+            iv_raw = safe_float(r.get("impliedVolatility"))
+            iv_pct = round(iv_raw * 100, 1)
+            strike = float(r["strike"])
+            delta = _calc_delta(strike, iv_pct if iv_pct > 0 else 30, side)
             rows.append({
-                "strike": float(r["strike"]),
+                "strike": strike,
                 "last": safe_float(r.get("lastPrice")),
                 "bid": bid,
                 "ask": ask,
                 "mid": round((bid + ask) / 2, 2),
                 "volume": safe_int(r.get("volume")),
                 "oi": safe_int(r.get("openInterest")),
-                "iv": round(safe_float(r.get("impliedVolatility")) * 100, 1),
+                "iv": iv_pct,
+                "delta": delta,
                 "itm": bool(r.get("inTheMoney", False)),
                 "side": side,
             })

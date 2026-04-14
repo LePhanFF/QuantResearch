@@ -147,6 +147,9 @@ body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); 
 .call-price { color:var(--green); font-weight:600; }
 .put-price { color:var(--red); font-weight:600; }
 
+/* Delta column */
+.delta-col { color:var(--purple); font-size:10px; }
+
 .chain-spot { padding:4px 16px; font-size:10px; color:var(--text-dim); background:var(--surface); border-top:1px solid var(--border); }
 
 /* Spinner */
