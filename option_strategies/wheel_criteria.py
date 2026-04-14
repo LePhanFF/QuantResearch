@@ -2,7 +2,7 @@
 Wheel Strategy Ticker Universe & Entry Criteria
 ================================================
 
-51 tickers grouped into 7 categories for diversified wheel income:
+74 tickers grouped into 7 categories for diversified wheel income:
 
   INDEX ETFs (9)        : SPY, SPLG, QQQ, QQQM, DIA, XLK, XLV, XLI, XLRE
   MEGA-CAP (6)          : AAPL, MSFT, AMZN, GOOGL, META, BRK-B
@@ -199,12 +199,36 @@ WHEEL_TICKERS: list[WheelTicker] = [
         notes="AI leader. Very high IV = excellent premiums. Use 0.15-0.20 delta.",
     ),
     WheelTicker(
+        ticker="AVGO", name="Broadcom Inc.", sector="Semiconductors",
+        instrument="stock", approx_price=379, multiplier=100,
+        notional_per_contract=37_900, avg_iv_rank=40,
+        options_liquidity="high", market_cap_b=880,
+        dividend_yield=1.0, quality_score=9,
+        notes="AI + networking chips. Dividend-paying semi. High IV.",
+    ),
+    WheelTicker(
         ticker="AMD", name="Advanced Micro Devices", sector="Semiconductors",
         instrument="stock", approx_price=247, multiplier=100,
         notional_per_contract=24_700, avg_iv_rank=50,
         options_liquidity="high", market_cap_b=400,
         dividend_yield=0.0, quality_score=8,
         notes="High IV = best premiums. Use wider OTM (0.15-0.20 delta).",
+    ),
+    WheelTicker(
+        ticker="TXN", name="Texas Instruments", sector="Semiconductors",
+        instrument="stock", approx_price=216, multiplier=100,
+        notional_per_contract=21_600, avg_iv_rank=25,
+        options_liquidity="high", market_cap_b=195,
+        dividend_yield=2.8, quality_score=9,
+        notes="Analog chip leader. Dividend aristocrat among semis.",
+    ),
+    WheelTicker(
+        ticker="INTC", name="Intel Corp.", sector="Semiconductors",
+        instrument="stock", approx_price=62, multiplier=100,
+        notional_per_contract=6_200, avg_iv_rank=45,
+        options_liquidity="high", market_cap_b=265,
+        dividend_yield=0.0, quality_score=7,
+        notes="Turnaround play. Very low capital, high IV = good premiums.",
     ),
     WheelTicker(
         ticker="TSLA", name="Tesla Inc.", sector="Auto/Energy",
@@ -240,8 +264,24 @@ WHEEL_TICKERS: list[WheelTicker] = [
     ),
 
     # =================================================================
-    # GROUP 4: DIVIDEND STAPLES  (low vol, steady income, buy stock often)
+    # GROUP 4: DIVIDEND STAPLES & CONSUMER  (quality you want to own)
     # =================================================================
+    WheelTicker(
+        ticker="COST", name="Costco Wholesale", sector="Consumer Staples",
+        instrument="stock", approx_price=974, multiplier=100,
+        notional_per_contract=97_400, avg_iv_rank=25,
+        options_liquidity="high", market_cap_b=430,
+        dividend_yield=0.5, quality_score=10,
+        notes="Premium quality retailer. Very high capital. Low IV = buy stock.",
+    ),
+    WheelTicker(
+        ticker="WMT", name="Walmart Inc.", sector="Consumer Staples",
+        instrument="stock", approx_price=125, multiplier=100,
+        notional_per_contract=12_500, avg_iv_rank=20,
+        options_liquidity="high", market_cap_b=680,
+        dividend_yield=1.0, quality_score=10,
+        notes="Largest retailer. Defensive, dividend grower.",
+    ),
     WheelTicker(
         ticker="KO", name="Coca-Cola Co.", sector="Consumer Staples",
         instrument="stock", approx_price=78, multiplier=100,
@@ -259,12 +299,76 @@ WHEEL_TICKERS: list[WheelTicker] = [
         notes="Dividend aristocrat. Stable, pairs with KO for staples exposure.",
     ),
     WheelTicker(
+        ticker="MCD", name="McDonald's Corp.", sector="Consumer Staples",
+        instrument="stock", approx_price=302, multiplier=100,
+        notional_per_contract=30_200, avg_iv_rank=20,
+        options_liquidity="high", market_cap_b=220,
+        dividend_yield=2.3, quality_score=9,
+        notes="Dividend aristocrat. Global franchise. Defensive.",
+    ),
+    WheelTicker(
+        ticker="HD", name="Home Depot Inc.", sector="Consumer",
+        instrument="stock", approx_price=341, multiplier=100,
+        notional_per_contract=34_100, avg_iv_rank=25,
+        options_liquidity="high", market_cap_b=340,
+        dividend_yield=2.5, quality_score=9,
+        notes="Home improvement leader. Cyclical but quality dividend.",
+    ),
+    WheelTicker(
+        ticker="LOW", name="Lowe's Companies", sector="Consumer",
+        instrument="stock", approx_price=247, multiplier=100,
+        notional_per_contract=24_700, avg_iv_rank=25,
+        options_liquidity="high", market_cap_b=140,
+        dividend_yield=1.9, quality_score=8,
+        notes="Home improvement #2. Pairs with HD, slightly higher IV.",
+    ),
+    WheelTicker(
+        ticker="TGT", name="Target Corp.", sector="Consumer Staples",
+        instrument="stock", approx_price=119, multiplier=100,
+        notional_per_contract=11_900, avg_iv_rank=35,
+        options_liquidity="high", market_cap_b=55,
+        dividend_yield=3.7, quality_score=8,
+        notes="Higher IV + dividend. More volatile than WMT/COST.",
+    ),
+    WheelTicker(
+        ticker="SBUX", name="Starbucks Corp.", sector="Consumer Staples",
+        instrument="stock", approx_price=98, multiplier=100,
+        notional_per_contract=9_800, avg_iv_rank=30,
+        options_liquidity="high", market_cap_b=110,
+        dividend_yield=2.5, quality_score=8,
+        notes="Global coffee brand. Turnaround story. Decent premium.",
+    ),
+    WheelTicker(
+        ticker="NKE", name="Nike Inc.", sector="Consumer",
+        instrument="stock", approx_price=44, multiplier=100,
+        notional_per_contract=4_400, avg_iv_rank=35,
+        options_liquidity="high", market_cap_b=65,
+        dividend_yield=2.2, quality_score=7,
+        notes="Very low capital. At multi-year lows. Turnaround candidate.",
+    ),
+    WheelTicker(
         ticker="JNJ", name="Johnson & Johnson", sector="Healthcare",
         instrument="stock", approx_price=238, multiplier=100,
         notional_per_contract=23_800, avg_iv_rank=20,
         options_liquidity="high", market_cap_b=575,
         dividend_yield=3.0, quality_score=9,
         notes="Dividend king. 60+ years of increases. Defensive healthcare.",
+    ),
+    WheelTicker(
+        ticker="UNH", name="UnitedHealth Group", sector="Healthcare",
+        instrument="stock", approx_price=316, multiplier=100,
+        notional_per_contract=31_600, avg_iv_rank=30,
+        options_liquidity="high", market_cap_b=580,
+        dividend_yield=1.6, quality_score=10,
+        notes="Largest health insurer. Quality compounder.",
+    ),
+    WheelTicker(
+        ticker="LLY", name="Eli Lilly & Co.", sector="Healthcare",
+        instrument="stock", approx_price=935, multiplier=100,
+        notional_per_contract=93_500, avg_iv_rank=35,
+        options_liquidity="high", market_cap_b=890,
+        dividend_yield=0.6, quality_score=9,
+        notes="GLP-1 leader. Very high capital. Premium growth pharma.",
     ),
 
     # =================================================================
@@ -457,6 +561,90 @@ WHEEL_TICKERS: list[WheelTicker] = [
         options_liquidity="high", market_cap_b=40,
         dividend_yield=3.3, quality_score=8,
         notes="Energy sector ETF. Higher IV + dividends. Cyclical.",
+    ),
+
+    # =================================================================
+    # GROUP 6b: INDUSTRIALS & DEFENSE  (cyclical income, infrastructure)
+    # =================================================================
+    WheelTicker(
+        ticker="CAT", name="Caterpillar Inc.", sector="Industrials",
+        instrument="stock", approx_price=789, multiplier=100,
+        notional_per_contract=78_900, avg_iv_rank=30,
+        options_liquidity="high", market_cap_b=385,
+        dividend_yield=1.4, quality_score=9,
+        notes="Infrastructure king. Very high capital. Cyclical bellwether.",
+    ),
+    WheelTicker(
+        ticker="HON", name="Honeywell Intl", sector="Industrials",
+        instrument="stock", approx_price=232, multiplier=100,
+        notional_per_contract=23_200, avg_iv_rank=25,
+        options_liquidity="high", market_cap_b=150,
+        dividend_yield=2.0, quality_score=9,
+        notes="Diversified industrial. Steady dividend, aerospace exposure.",
+    ),
+    WheelTicker(
+        ticker="GE", name="GE Aerospace", sector="Industrials",
+        instrument="stock", approx_price=317, multiplier=100,
+        notional_per_contract=31_700, avg_iv_rank=30,
+        options_liquidity="high", market_cap_b=340,
+        dividend_yield=0.6, quality_score=9,
+        notes="Pure-play aerospace post-spinoff. Growth + defense.",
+    ),
+    WheelTicker(
+        ticker="RTX", name="RTX Corp.", sector="Defense",
+        instrument="stock", approx_price=202, multiplier=100,
+        notional_per_contract=20_200, avg_iv_rank=25,
+        options_liquidity="high", market_cap_b=260,
+        dividend_yield=2.1, quality_score=9,
+        notes="Defense + aerospace. Dividend payer. Geopolitical hedge.",
+    ),
+    WheelTicker(
+        ticker="LMT", name="Lockheed Martin", sector="Defense",
+        instrument="stock", approx_price=611, multiplier=100,
+        notional_per_contract=61_100, avg_iv_rank=20,
+        options_liquidity="high", market_cap_b=145,
+        dividend_yield=2.5, quality_score=9,
+        notes="Premier defense contractor. High capital, stable dividend.",
+    ),
+    WheelTicker(
+        ticker="UPS", name="United Parcel Service", sector="Industrials",
+        instrument="stock", approx_price=102, multiplier=100,
+        notional_per_contract=10_200, avg_iv_rank=30,
+        options_liquidity="high", market_cap_b=85,
+        dividend_yield=5.3, quality_score=8,
+        notes="Logistics leader. High yield at current levels.",
+    ),
+    WheelTicker(
+        ticker="NEE", name="NextEra Energy", sector="Utilities",
+        instrument="stock", approx_price=91, multiplier=100,
+        notional_per_contract=9_100, avg_iv_rank=25,
+        options_liquidity="high", market_cap_b=185,
+        dividend_yield=2.7, quality_score=9,
+        notes="Largest utility. Renewable energy leader. Defensive income.",
+    ),
+    WheelTicker(
+        ticker="SO", name="Southern Company", sector="Utilities",
+        instrument="stock", approx_price=95, multiplier=100,
+        notional_per_contract=9_500, avg_iv_rank=15,
+        options_liquidity="high", market_cap_b=105,
+        dividend_yield=3.4, quality_score=8,
+        notes="Regulated utility. Ultra-stable. Low IV = buy stock.",
+    ),
+    WheelTicker(
+        ticker="EOG", name="EOG Resources", sector="Energy",
+        instrument="stock", approx_price=133, multiplier=100,
+        notional_per_contract=13_300, avg_iv_rank=35,
+        options_liquidity="high", market_cap_b=75,
+        dividend_yield=2.8, quality_score=8,
+        notes="Top shale producer. High IV + dividend. Pairs with CVX/XOM.",
+    ),
+    WheelTicker(
+        ticker="SLB", name="Schlumberger Ltd.", sector="Energy",
+        instrument="stock", approx_price=51, multiplier=100,
+        notional_per_contract=5_100, avg_iv_rank=35,
+        options_liquidity="high", market_cap_b=70,
+        dividend_yield=2.5, quality_score=7,
+        notes="Oilfield services. Low capital, higher IV. Cyclical.",
     ),
 
     # =================================================================
