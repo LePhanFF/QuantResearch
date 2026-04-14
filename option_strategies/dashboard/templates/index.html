@@ -205,8 +205,14 @@ window.addEventListener('DOMContentLoaded', () => loadLatest());
 async function loadLatest() {
     try {
         const r = await fetch('/api/latest');
-        if (r.ok) { scanData = await r.json(); render(); }
+        if (r.ok) {
+            scanData = await r.json();
+            render();
+            return;
+        }
     } catch(e) {}
+    // No cached scan — run one automatically on first load
+    runScan();
 }
 
 async function runScan() {
