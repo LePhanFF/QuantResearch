@@ -828,10 +828,13 @@ function setBasketSize(s) {
     buildBasket();
 }
 
+let _sliderTimer = null;
 function onRiskSlider() {
     basketMaxDD = parseInt(document.getElementById('risk-slider').value);
     document.getElementById('risk-val').textContent = `Max DD: ${basketMaxDD}%`;
-    buildBasket();
+    // Debounce — only fire after user stops sliding for 400ms
+    clearTimeout(_sliderTimer);
+    _sliderTimer = setTimeout(() => buildBasket(), 400);
 }
 
 async function buildBasket() {
@@ -958,9 +961,10 @@ function renderBasket(d) {
     loadBacktest();
 }
 
-let eqChart = null, ddChart = null;
+let eqChart = null, ddChart = null, _backtestId = 0;
 
 async function loadBacktest() {
+    const myId = ++_backtestId;  // track which request is current
     document.getElementById('backtest-stats').innerHTML = '<span class="dim">Loading 5Y backtest...</span>';
     // Destroy old chart instances before recreating
     if (eqChart) { eqChart.remove(); eqChart = null; }
@@ -970,11 +974,13 @@ async function loadBacktest() {
     document.getElementById('annual-table-wrap').innerHTML = '';
     try {
         const r = await fetch(`/api/basket/backtest?size=${basketSize}&max_dd=${basketMaxDD}`);
+        if (myId !== _backtestId) return;  // stale request, discard
         const d = await r.json();
+        if (myId !== _backtestId) return;  // stale request, discard
         if (d.error) { document.getElementById('backtest-stats').innerHTML = `<span class="red">${d.error}</span>`; return; }
         renderBacktest(d);
     } catch(e) {
-        document.getElementById('backtest-stats').innerHTML = '<span class="red">Backtest failed</span>';
+        if (myId === _backtestId) document.getElementById('backtest-stats').innerHTML = '<span class="red">Backtest failed</span>';
     }
 }
 
