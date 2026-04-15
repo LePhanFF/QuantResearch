@@ -120,8 +120,9 @@
                 <label class="vp-toggle"><input type="checkbox" id="sma-sig-toggle" checked onchange="toggleSmaSig()"> SMA Signals</label>
             </div>
             </div>
-            <div id="chart-container" class="chart-container" style="position:relative">
-            <canvas id="vp-canvas" class="vp-canvas"></canvas>
+            <div id="chart-wrapper" class="chart-wrapper">
+            <div id="chart-container" class="chart-container"></div>
+            <div id="vp-overlay" class="vp-overlay"></div>
         </div>
             <div id="rsi-container" class="rsi-container"></div>
         </div>
@@ -687,7 +688,7 @@ function renderChart(data) {
     new ResizeObserver(() => {
         mainChart.applyOptions({width: cc.clientWidth});
         rsiChart.applyOptions({width: rc.clientWidth});
-        if (document.getElementById('vp-toggle')?.checked) drawVolumeProfile();
+        setTimeout(() => { if (document.getElementById('vp-toggle')?.checked) drawVolumeProfile(); }, 50);
     }).observe(cc);
 }
 
@@ -1349,18 +1350,12 @@ function toggleEarnings() { rebuildMarkers(); }
 function toggleSmaSig() { rebuildMarkers(); }
 
 // ── Volume Profile (TradingView-style horizontal bars) ────────
-function toggleVolProfile() {
-    drawVolumeProfile();
-}
+function toggleVolProfile() { drawVolumeProfile(); }
 
 function drawVolumeProfile() {
-    const canvas = document.getElementById('vp-canvas');
-    if (!canvas) return;
-    const cc = document.getElementById('chart-container');
-    canvas.width = cc.clientWidth;
-    canvas.height = cc.clientHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const overlay = document.getElementById('vp-overlay');
+    if (!overlay) return;
+    overlay.innerHTML = '';
 
     const on = document.getElementById('vp-toggle')?.checked;
     if (!on || !_lastChartData || !_lastChartData.volume_profile || !mainChart || !_candleSeries) return;
@@ -1371,63 +1366,75 @@ function drawVolumeProfile() {
     const maxTotal = Math.max(...vp.map(v => v.total));
     if (maxTotal === 0) return;
 
-    // Max bar width = 30% of chart width, drawn from right edge
-    const maxBarW = canvas.width * 0.30;
-    const rightEdge = canvas.width - 50; // leave room for price scale
-
-    // Find POC (Point of Control = highest volume bar)
-    const pocPrice = vp.reduce((a, b) => b.total > a.total ? b : a).price;
+    const wrapper = document.getElementById('chart-wrapper');
+    const wrapperW = wrapper.clientWidth;
+    const maxBarW = wrapperW * 0.25;
+    const pocNode = vp.reduce((a, b) => b.total > a.total ? b : a);
 
     for (const node of vp) {
-        // Convert price to Y coordinate using the chart's price scale
         const yLo = _candleSeries.priceToCoordinate(node.lo);
         const yHi = _candleSeries.priceToCoordinate(node.hi);
         if (yLo === null || yHi === null) continue;
 
-        const barH = Math.max(Math.abs(yLo - yHi) - 1, 2);
-        const y = Math.min(yLo, yHi);
+        const top = Math.min(yLo, yHi);
+        const barH = Math.max(Math.abs(yLo - yHi) - 1, 3);
         const ratio = node.total / maxTotal;
-        const totalW = ratio * maxBarW;
-        const isPOC = node.price === pocPrice;
+        const totalW = Math.max(ratio * maxBarW, 2);
+        const isPOC = node.price === pocNode.price;
+        const buyPct = node.total > 0 ? node.buy / node.total : 0.5;
+        const sellW = totalW * (1 - buyPct);
+        const buyW = totalW * buyPct;
 
-        // Buy volume (green, right side of bar)
-        const buyW = node.buy / node.total * totalW;
-        // Sell volume (red, left side of bar)
-        const sellW = node.sell / node.total * totalW;
+        // Container bar
+        const bar = document.createElement('div');
+        bar.className = 'vp-bar' + (isPOC ? ' vp-poc' : '');
+        bar.style.cssText = `top:${top}px;height:${barH}px;width:${totalW}px;right:48px;`;
 
-        // Draw sell (red) from right edge going left
-        ctx.fillStyle = isPOC ? 'rgba(239,68,68,0.6)' : 'rgba(239,68,68,0.35)';
-        ctx.fillRect(rightEdge - totalW, y, sellW, barH);
+        // Sell portion (red, left)
+        const sellDiv = document.createElement('div');
+        sellDiv.className = 'vp-sell';
+        sellDiv.style.width = sellW + 'px';
+        bar.appendChild(sellDiv);
 
-        // Draw buy (green/teal) next to sell
-        ctx.fillStyle = isPOC ? 'rgba(38,166,154,0.6)' : 'rgba(38,166,154,0.35)';
-        ctx.fillRect(rightEdge - totalW + sellW, y, buyW, barH);
+        // Buy portion (teal, right)
+        const buyDiv = document.createElement('div');
+        buyDiv.className = 'vp-buy';
+        buyDiv.style.width = buyW + 'px';
+        bar.appendChild(buyDiv);
 
-        // POC line
+        // Volume label on large bars
+        if (ratio > 0.3) {
+            const label = document.createElement('span');
+            label.className = 'vp-label';
+            label.textContent = (node.total / 1e6).toFixed(0) + 'M';
+            bar.appendChild(label);
+        }
+
+        overlay.appendChild(bar);
+
+        // POC dashed line
         if (isPOC) {
-            ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([3, 3]);
-            ctx.beginPath();
-            ctx.moveTo(0, y + barH / 2);
-            ctx.lineTo(rightEdge - totalW - 4, y + barH / 2);
-            ctx.stroke();
-            ctx.setLineDash([]);
+            const line = document.createElement('div');
+            line.className = 'vp-poc-line';
+            line.style.cssText = `top:${top + barH/2}px;right:${totalW + 52}px;`;
 
-            // POC label
-            ctx.fillStyle = '#ffffff99';
-            ctx.font = '9px JetBrains Mono, monospace';
-            ctx.fillText(`POC $${node.price}`, 4, y + barH / 2 + 3);
+            const pocLabel = document.createElement('span');
+            pocLabel.className = 'vp-poc-label';
+            pocLabel.textContent = `POC $${node.price}`;
+            line.appendChild(pocLabel);
+
+            overlay.appendChild(line);
         }
     }
 }
 
-// Redraw VP on chart scroll/zoom
 function _hookVPRedraw() {
     if (mainChart) {
         mainChart.timeScale().subscribeVisibleLogicalRangeChange(() => {
             if (document.getElementById('vp-toggle')?.checked) drawVolumeProfile();
         });
+        // Also redraw when price scale changes
+        mainChart.subscribeCrosshairMove(() => {});  // keeps chart active
     }
 }
 
