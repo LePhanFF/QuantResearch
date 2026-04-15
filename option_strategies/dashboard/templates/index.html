@@ -572,10 +572,13 @@ function switchRightTab(tab, btn) {
     document.getElementById('rt-' + tab).style.display = 'block';
     // If switching to chart and we have pending data, render it now
     if (tab === 'chart' && _pendingChartData) {
-        setTimeout(() => {
-            renderChart(_pendingChartData);
-            _pendingChartData = null;
-        }, 50);
+        // Wait for layout to settle so clientHeight is accurate
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                renderChart(_pendingChartData);
+                _pendingChartData = null;
+            }, 100);
+        });
     }
 }
 
@@ -608,9 +611,15 @@ function renderChart(data) {
 
     const intraday = data.interval && data.interval !== '1d';
 
+    // Calculate chart height: fill the tab minus toolbar(~32px) and RSI(80px)
+    const tabPanel = document.getElementById('rt-chart');
+    const availH = tabPanel ? tabPanel.clientHeight - 120 : 500;
+    const chartH = Math.max(availH, 300);
+    cc.style.height = chartH + 'px';
+
     // Main chart
     mainChart = LightweightCharts.createChart(cc, {
-        width: cc.clientWidth, height: cc.clientHeight || 400,
+        width: cc.clientWidth, height: chartH,
         layout: { background: {color:'#1a1d27'}, textColor: '#8b8fa3', fontSize: 11 },
         grid: { vertLines:{color:'#2e3140'}, horzLines:{color:'#2e3140'} },
         crosshair: { mode: 0 },
