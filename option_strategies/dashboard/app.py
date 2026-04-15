@@ -1072,11 +1072,13 @@ async def _do_chat(request: Request):
             ticker_data = next((x for x in scan.get("tickers", []) if x.get("ticker") == ticker), None)
 
     def _fmt(t):
-        return (f"{t.get('ticker','?'):>5} ${t.get('price',0):>8.2f} "
-                f"RSI:{t.get('rsi_14',0):>3.0f} IVR:{t.get('iv_rank',0):>3.0f} "
-                f"P/E:{t.get('trailing_pe','N/A'):>5} "
-                f"vs200:{t.get('pct_from_200_sma',0):>+5.1f}% "
-                f"ROC:{t.get('csp_ann_roc_pct',0):>5.1f}% "
+        pe = t.get('trailing_pe')
+        pe_str = f"{pe:.0f}" if pe is not None else "N/A"
+        return (f"{t.get('ticker','?'):>5} ${t.get('price',0) or 0:>8.2f} "
+                f"RSI:{t.get('rsi_14',0) or 0:>3.0f} IVR:{t.get('iv_rank',0) or 0:>3.0f} "
+                f"P/E:{pe_str:>5} "
+                f"vs200:{t.get('pct_from_200_sma',0) or 0:>+5.1f}% "
+                f"ROC:{t.get('csp_ann_roc_pct',0) or 0:>5.1f}% "
                 f"R/R:{t.get('risk_reward','?')} "
                 f"-> {t.get('entry_action','?')}")
 
