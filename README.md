@@ -69,6 +69,17 @@ Four sub-tabs on the right panel:
 - Full wheel playbook in system prompt
 - Ticker context auto-loaded when you click a ticker
 
+### Interactive Guided Tour
+
+Click the green **Guide** button (next to Playbook) to start a 15-step interactive walkthrough that highlights every feature of the dashboard with tooltips. Restart anytime.
+
+Tour steps are defined in `option_strategies/dashboard/static/tour.js` — edit the `TOUR_STEPS` array to add, remove, or reorder steps. No rebuild needed for content changes.
+
+### Search & Clickable Tickers
+
+- **Search box** at top of ticker table — type any ticker, company name, or sector to filter instantly
+- **Clickable tickers in Gemini chat** — when AI suggests a ticker like SLB, click it to jump directly to that ticker's detail view
+
 ## The Playbook
 
 ### Phase 1: Entry
