@@ -120,7 +120,9 @@
                 <label class="vp-toggle"><input type="checkbox" id="sma-sig-toggle" checked onchange="toggleSmaSig()"> SMA Signals</label>
             </div>
             </div>
-            <div id="chart-container" class="chart-container"></div>
+            <div id="chart-container" class="chart-container" style="position:relative">
+            <canvas id="vp-canvas" class="vp-canvas"></canvas>
+        </div>
             <div id="rsi-container" class="rsi-container"></div>
         </div>
 
@@ -654,6 +656,9 @@ function renderChart(data) {
     _lastChartData = data;
     rebuildMarkers();
     mainChart.timeScale().fitContent();
+    _hookVPRedraw();
+    // Draw VP if toggle is on
+    setTimeout(() => { if (document.getElementById('vp-toggle')?.checked) drawVolumeProfile(); }, 100);
 
     // RSI chart
     rsiChart = LightweightCharts.createChart(rc, {
@@ -682,6 +687,7 @@ function renderChart(data) {
     new ResizeObserver(() => {
         mainChart.applyOptions({width: cc.clientWidth});
         rsiChart.applyOptions({width: rc.clientWidth});
+        if (document.getElementById('vp-toggle')?.checked) drawVolumeProfile();
     }).observe(cc);
 }
 
@@ -1320,7 +1326,7 @@ function formatReply(text) {
 }
 
 // ── Chart toggles ─────────────────────────────────────────────
-let vpSeries = null, _lastChartData = null;
+let _lastChartData = null;
 let _chartSignals = [], _chartEarnings = [], _candleSeries = null;
 
 function rebuildMarkers() {
@@ -1329,10 +1335,9 @@ function rebuildMarkers() {
     const showSma = document.getElementById('sma-sig-toggle')?.checked ?? true;
 
     let markers = [];
-    // Trade signals (split into SMA support vs others)
     for (const s of _chartSignals) {
         if (s._type === 'sma' && !showSma) continue;
-        if (s._type === 'trade' && !showSma) continue;  // trade signals tied to SMA toggle
+        if (s._type === 'trade' && !showSma) continue;
         markers.push(s);
     }
     if (showEarn) markers = markers.concat(_chartEarnings);
@@ -1343,56 +1348,86 @@ function rebuildMarkers() {
 function toggleEarnings() { rebuildMarkers(); }
 function toggleSmaSig() { rebuildMarkers(); }
 
+// ── Volume Profile (TradingView-style horizontal bars) ────────
 function toggleVolProfile() {
-    const on = document.getElementById('vp-toggle').checked;
-    if (!_lastChartData || !mainChart) return;
+    drawVolumeProfile();
+}
 
-    // Remove old VP
-    if (Array.isArray(vpSeries)) vpSeries.forEach(s => mainChart.removeSeries(s));
-    else if (vpSeries) mainChart.removeSeries(vpSeries);
-    vpSeries = null;
+function drawVolumeProfile() {
+    const canvas = document.getElementById('vp-canvas');
+    if (!canvas) return;
+    const cc = document.getElementById('chart-container');
+    canvas.width = cc.clientWidth;
+    canvas.height = cc.clientHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (!on || !_lastChartData.volume_profile) return;
+    const on = document.getElementById('vp-toggle')?.checked;
+    if (!on || !_lastChartData || !_lastChartData.volume_profile || !mainChart || !_candleSeries) return;
 
     const vp = _lastChartData.volume_profile;
     if (vp.length === 0) return;
-    const maxVol = Math.max(...vp.map(v => v.volume));
-    const candles = _lastChartData.candles;
-    const lastTime = candles[candles.length - 1]?.time;
-    const firstTime = candles[0]?.time;
-    if (!lastTime || !firstTime) return;
 
-    // Draw horizontal bars as line series with varying opacity by volume
-    vpSeries = [];
+    const maxTotal = Math.max(...vp.map(v => v.total));
+    if (maxTotal === 0) return;
+
+    // Max bar width = 30% of chart width, drawn from right edge
+    const maxBarW = canvas.width * 0.30;
+    const rightEdge = canvas.width - 50; // leave room for price scale
+
+    // Find POC (Point of Control = highest volume bar)
+    const pocPrice = vp.reduce((a, b) => b.total > a.total ? b : a).price;
+
     for (const node of vp) {
-        if (node.volume < maxVol * 0.05) continue;  // skip tiny bars
-        const intensity = Math.min(node.volume / maxVol, 1);
-        const alpha = Math.floor(40 + intensity * 80).toString(16).padStart(2, '0');
-        const width = Math.max(1, Math.round(intensity * 4));
+        // Convert price to Y coordinate using the chart's price scale
+        const yLo = _candleSeries.priceToCoordinate(node.lo);
+        const yHi = _candleSeries.priceToCoordinate(node.hi);
+        if (yLo === null || yHi === null) continue;
 
-        const ls = mainChart.addLineSeries({
-            color: `#3b82f6${alpha}`,
-            lineWidth: width,
-            lineStyle: 0,
-            priceScaleId: 'right',
-            lastValueVisible: false,
-            priceLineVisible: false,
-            crosshairMarkerVisible: false,
-        });
-        ls.setData([{time: firstTime, value: node.price}, {time: lastTime, value: node.price}]);
+        const barH = Math.max(Math.abs(yLo - yHi) - 1, 2);
+        const y = Math.min(yLo, yHi);
+        const ratio = node.total / maxTotal;
+        const totalW = ratio * maxBarW;
+        const isPOC = node.price === pocPrice;
 
-        // Label for high-volume nodes
-        if (intensity > 0.5) {
-            ls.createPriceLine({
-                price: node.price,
-                color: `#3b82f6${alpha}`,
-                lineWidth: 0,
-                lineStyle: 2,
-                axisLabelVisible: true,
-                title: `${(node.volume / 1e6).toFixed(0)}M`,
-            });
+        // Buy volume (green, right side of bar)
+        const buyW = node.buy / node.total * totalW;
+        // Sell volume (red, left side of bar)
+        const sellW = node.sell / node.total * totalW;
+
+        // Draw sell (red) from right edge going left
+        ctx.fillStyle = isPOC ? 'rgba(239,68,68,0.6)' : 'rgba(239,68,68,0.35)';
+        ctx.fillRect(rightEdge - totalW, y, sellW, barH);
+
+        // Draw buy (green/teal) next to sell
+        ctx.fillStyle = isPOC ? 'rgba(38,166,154,0.6)' : 'rgba(38,166,154,0.35)';
+        ctx.fillRect(rightEdge - totalW + sellW, y, buyW, barH);
+
+        // POC line
+        if (isPOC) {
+            ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(0, y + barH / 2);
+            ctx.lineTo(rightEdge - totalW - 4, y + barH / 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // POC label
+            ctx.fillStyle = '#ffffff99';
+            ctx.font = '9px JetBrains Mono, monospace';
+            ctx.fillText(`POC $${node.price}`, 4, y + barH / 2 + 3);
         }
-        vpSeries.push(ls);
+    }
+}
+
+// Redraw VP on chart scroll/zoom
+function _hookVPRedraw() {
+    if (mainChart) {
+        mainChart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+            if (document.getElementById('vp-toggle')?.checked) drawVolumeProfile();
+        });
     }
 }
 

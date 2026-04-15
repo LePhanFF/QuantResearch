@@ -924,26 +924,35 @@ async def api_chart(ticker: str, tf: str = "1Y"):
         except Exception:
             pass
 
-    # ── Volume profile (price bins with volume) ──
+    # ── Volume profile (price bins with buy/sell split) ──
     vol_profile = []
     if not intraday and len(close) > 20:
-        prices = close.values
+        closes = close.values
+        opens = df["Open"].values if "Open" in df.columns else closes
         volumes = df["Volume"].values if "Volume" in df.columns else np.zeros(len(close))
-        price_min, price_max = float(np.nanmin(prices)), float(np.nanmax(prices))
+        price_min, price_max = float(np.nanmin(closes)), float(np.nanmax(closes))
         if price_max > price_min:
-            n_bins = 30
+            n_bins = 40
             bin_size = (price_max - price_min) / n_bins
             for i in range(n_bins):
                 lo = price_min + i * bin_size
                 hi = lo + bin_size
-                mask = (prices >= lo) & (prices < hi)
-                total_vol = float(np.nansum(volumes[mask]))
-                vol_profile.append({
-                    "price": round((lo + hi) / 2, 2),
-                    "volume": int(total_vol),
-                    "lo": round(lo, 2),
-                    "hi": round(hi, 2),
-                })
+                mask = (closes >= lo) & (closes < hi)
+                # Split by candle direction: close >= open = buy, else sell
+                buy_mask = mask & (closes >= opens)
+                sell_mask = mask & (closes < opens)
+                buy_vol = int(np.nansum(volumes[buy_mask]))
+                sell_vol = int(np.nansum(volumes[sell_mask]))
+                total = buy_vol + sell_vol
+                if total > 0:
+                    vol_profile.append({
+                        "price": round((lo + hi) / 2, 2),
+                        "lo": round(lo, 2),
+                        "hi": round(hi, 2),
+                        "total": total,
+                        "buy": buy_vol,
+                        "sell": sell_vol,
+                    })
 
     return JSONResponse({
         "ticker": ticker,
