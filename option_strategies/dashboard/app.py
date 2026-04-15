@@ -613,12 +613,30 @@ async def api_options(ticker: str, expiry: str | None = None):
 
     from option_pricing import black_scholes_put as _bs_put, black_scholes_call as _bs_call
 
+    # Get historical vol as fallback when Yahoo IV is garbage
+    _fallback_iv = 0.30  # default 30%
+    try:
+        import numpy as np
+        hist = yf.download(ticker, period="3mo", interval="1d", progress=False)
+        if not hist.empty:
+            hclose = hist["Close"]
+            if isinstance(hclose, pd.DataFrame):
+                hclose = hclose.iloc[:, 0]
+            rets = np.log(hclose / hclose.shift(1)).dropna()
+            if len(rets) > 10:
+                _fallback_iv = float(rets.std() * np.sqrt(252))
+    except Exception:
+        pass
+
     def _calc_delta(strike, iv_pct, side):
-        """Estimate delta using Black-Scholes."""
-        if not spot or spot <= 0 or iv_pct <= 0:
+        """Estimate delta using Black-Scholes.
+        Falls back to historical vol when Yahoo IV is unreliable (<5%)."""
+        if not spot or spot <= 0:
             return None
+        # Yahoo often returns IV=0.001% or 3% which is nonsense
+        # Use fallback HV * 1.2 (IV premium) when IV < 5%
+        sigma = iv_pct / 100 if iv_pct >= 10 else _fallback_iv * 1.2
         T = dte / 365
-        sigma = iv_pct / 100
         try:
             if side == "CALL":
                 q = _bs_call(spot, strike, T, 0.045, sigma)
