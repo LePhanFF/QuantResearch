@@ -114,6 +114,23 @@
     </div>
 </div>
 
+<!-- Chat panel (slide-in drawer) -->
+<div id="chat-drawer" class="chat-drawer">
+    <div class="chat-header">
+        <span>GEMINI ASSISTANT</span>
+        <span id="chat-ticker-label" class="chat-ticker-label"></span>
+        <button class="chat-close" onclick="toggleChat()">X</button>
+    </div>
+    <div id="chat-messages" class="chat-messages">
+        <div class="chat-msg assistant">Click a ticker then ask me anything about it. I have access to live scan data, RSI, IV rank, P/E, and the full wheel playbook.</div>
+    </div>
+    <div class="chat-input-wrap">
+        <input type="text" id="chat-input" class="chat-input" placeholder="Ask about this ticker..." onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="chat-send" onclick="sendChat()">Send</button>
+    </div>
+</div>
+<button id="chat-toggle" class="chat-fab" onclick="toggleChat()">AI</button>
+
 <!-- Basket Builder (hidden by default) -->
 <div id="basket-view" style="display:none" class="basket-panel">
     <div class="basket-header">
@@ -468,6 +485,9 @@ async function selectTicker(ticker) {
 
     // Load fundamentals
     loadFundamentals(ticker);
+
+    // Update chat context
+    updateChatContext();
 }
 
 async function loadChart(ticker) {
@@ -1071,6 +1091,78 @@ function renderBacktest(d) {
         html += '</tbody></table>';
         document.getElementById('annual-table-wrap').innerHTML = html;
     }
+}
+
+// ── Gemini Chat ───────────────────────────────────────────────
+let chatHistory = [];
+let chatOpen = false;
+
+function toggleChat() {
+    chatOpen = !chatOpen;
+    document.getElementById('chat-drawer').classList.toggle('open', chatOpen);
+    document.getElementById('chat-toggle').style.display = chatOpen ? 'none' : 'flex';
+    if (chatOpen) document.getElementById('chat-input').focus();
+}
+
+function updateChatContext() {
+    const label = document.getElementById('chat-ticker-label');
+    label.textContent = selectedTicker ? selectedTicker : '';
+}
+
+async function sendChat() {
+    const input = document.getElementById('chat-input');
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+
+    // Add user message to UI
+    appendChatMsg('user', msg);
+    chatHistory.push({role: 'user', text: msg});
+
+    // Show typing indicator
+    const typingId = appendChatMsg('assistant', '...');
+
+    try {
+        const r = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                message: msg,
+                ticker: selectedTicker,
+                history: chatHistory.slice(-10),
+            }),
+        });
+        const d = await r.json();
+        // Replace typing indicator
+        document.getElementById(typingId).innerHTML = formatReply(d.reply || d.error || 'No response');
+        chatHistory.push({role: 'model', text: d.reply || ''});
+    } catch(e) {
+        document.getElementById(typingId).innerHTML = 'Connection error';
+    }
+
+    // Scroll to bottom
+    const msgs = document.getElementById('chat-messages');
+    msgs.scrollTop = msgs.scrollHeight;
+}
+
+function appendChatMsg(role, text) {
+    const msgs = document.getElementById('chat-messages');
+    const div = document.createElement('div');
+    const id = 'msg-' + Date.now();
+    div.id = id;
+    div.className = `chat-msg ${role}`;
+    div.innerHTML = formatReply(text);
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+    return id;
+}
+
+function formatReply(text) {
+    // Basic markdown: bold, code, newlines
+    return text
+        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+        .replace(/`(.*?)`/g, '<code>$1</code>')
+        .replace(/\n/g, '<br>');
 }
 </script>
 </body>

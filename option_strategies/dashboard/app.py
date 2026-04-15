@@ -40,6 +40,9 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 _latest_scan: dict | None = None
 
+import os
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
 
 # ── API ──────────────────────────────────────────────────────────
 
@@ -763,6 +766,83 @@ async def api_chart(ticker: str, tf: str = "1Y"):
         "volume": vol_data,
         "signals": signals,
     })
+
+
+@app.post("/api/chat")
+async def api_chat(request: Request):
+    """Chat with Gemini about a ticker using live scan data as context."""
+    if not GEMINI_API_KEY:
+        return JSONResponse({"error": "GEMINI_API_KEY not set"}, status_code=500)
+
+    body = await request.json()
+    message = body.get("message", "")
+    ticker = body.get("ticker")
+    history = body.get("history", [])
+
+    # Build context from scan data
+    context_parts = []
+    if ticker and _latest_scan:
+        t = next((x for x in _latest_scan.get("tickers", []) if x.get("ticker") == ticker), None)
+        if t:
+            context_parts.append(f"Current scan data for {ticker}:\n{__import__('json').dumps(t, indent=2)}")
+
+    system_prompt = """You are a wheel strategy options trading assistant integrated into a live dashboard.
+You have access to real-time scan data for the selected ticker including price, RSI, IV rank,
+P/E ratio, trend, 200 SMA position, and CSP/CC setups.
+
+Your role:
+- Analyze whether to SELL PUT, BUY STOCK, or STAND ASIDE on the selected ticker
+- Explain the reasoning using the live data provided
+- Suggest specific strikes, deltas, and DTE based on current conditions
+- Warn about risks (overbought, overvalued, falling knife, earnings)
+- Keep responses concise and actionable — this is a trading terminal, not an essay
+
+Decision rules you follow:
+- IVR >= 50: sell put at 0.20 delta | IVR 30-50: sell put at 0.25 delta | IVR < 20: buy stock
+- RSI > 70 + P/E > 40: stand aside (overbought + expensive)
+- RSI < 30 + above 200 SMA: prime accumulation zone
+- 10-25% off 52w high + above 200 SMA: pullback sweet spot
+- Never sell puts into earnings
+- Never roll for a debit
+- Max 20% per ticker, 35% per sector, 25% cash buffer"""
+
+    # Build Gemini messages
+    from google import genai
+
+    client = genai.Client(api_key=GEMINI_API_KEY)
+
+    contents = []
+    for h in history[-10:]:  # last 10 messages for context window
+        contents.append(genai.types.Content(
+            role=h["role"],
+            parts=[genai.types.Part(text=h["text"])],
+        ))
+
+    # Add current message with context
+    user_text = message
+    if context_parts:
+        user_text = "\n\n".join(context_parts) + "\n\nUser question: " + message
+
+    contents.append(genai.types.Content(
+        role="user",
+        parts=[genai.types.Part(text=user_text)],
+    ))
+
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=contents,
+            config=genai.types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0.3,
+                max_output_tokens=1024,
+            ),
+        )
+        reply = response.text
+    except Exception as e:
+        reply = f"Gemini error: {str(e)}"
+
+    return JSONResponse({"reply": reply})
 
 
 @app.get("/", response_class=HTMLResponse)
