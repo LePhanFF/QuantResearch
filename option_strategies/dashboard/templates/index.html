@@ -47,6 +47,10 @@
 <div class="terminal-layout" id="terminal-layout">
     <!-- Left panel: ticker table -->
     <div class="left-panel" id="left-panel">
+        <!-- Search box -->
+        <div class="search-bar">
+            <input type="text" id="ticker-search" class="search-input" placeholder="Search ticker or name..." oninput="render()">
+        </div>
         <!-- Group filter -->
         <div class="group-bar">
             <button class="grp-btn active" onclick="setGroup('ALL')">All</button>
@@ -485,6 +489,16 @@ function renderTable(tickers) {
     // Apply group filter
     if (activeGroup !== 'ALL') {
         filtered = filtered.filter(t => (GROUPS[t.ticker]||'') === activeGroup);
+    }
+
+    // Apply search filter
+    const search = (document.getElementById('ticker-search')?.value || '').toUpperCase().trim();
+    if (search) {
+        filtered = filtered.filter(t =>
+            (t.ticker||'').toUpperCase().includes(search) ||
+            (t.name||'').toUpperCase().includes(search) ||
+            (t.sector||'').toUpperCase().includes(search)
+        );
     }
 
     // Sort within groups
@@ -1327,12 +1341,38 @@ function appendChatMsg(role, text) {
     return id;
 }
 
+// All known tickers for clickable matching
+const ALL_TICKERS_SET = new Set(Object.keys(GROUPS));
+
 function formatReply(text) {
-    // Basic markdown: bold, code, newlines
     return text
         .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
         .replace(/`(.*?)`/g, '<code>$1</code>')
-        .replace(/\n/g, '<br>');
+        .replace(/\n/g, '<br>')
+        // Make ticker symbols clickable
+        .replace(/\b([A-Z]{1,5}(?:-[A-Z])?)\b/g, (match) => {
+            if (ALL_TICKERS_SET.has(match)) {
+                return `<span class="chat-ticker-link" onclick="chatGoToTicker('${match}')">${match}</span>`;
+            }
+            return match;
+        });
+}
+
+function chatGoToTicker(ticker) {
+    // Put ticker in search box and select it
+    document.getElementById('ticker-search').value = ticker;
+    // Switch to opportunities view if on another tab
+    const main = document.querySelector('.terminal-layout');
+    if (main.style.display === 'none') {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelector('.tab').classList.add('active');
+        document.getElementById('playbook-view').style.display = 'none';
+        document.getElementById('basket-view').style.display = 'none';
+        document.getElementById('heatmap-view').style.display = 'none';
+        main.style.display = 'flex';
+    }
+    render();
+    selectTicker(ticker);
 }
 
 // ── Chart toggles ─────────────────────────────────────────────
