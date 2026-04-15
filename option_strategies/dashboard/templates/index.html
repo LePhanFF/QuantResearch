@@ -1242,6 +1242,10 @@ function toggleChat() {
 function updateChatContext() {
     const label = document.getElementById('chat-ticker-label');
     label.textContent = selectedTicker ? selectedTicker : '';
+    // Reset chat when ticker changes
+    chatHistory = [];
+    document.getElementById('chat-messages').innerHTML =
+        '<div class="chat-msg assistant">Analyzing <b>' + (selectedTicker||'') + '</b>... ask me anything or just say "analyze".</div>';
 }
 
 async function sendChat() {

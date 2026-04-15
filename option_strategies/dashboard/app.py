@@ -1043,17 +1043,36 @@ async def api_chat(request: Request):
     ticker = body.get("ticker")
     history = body.get("history", [])
 
-    # Build context from scan data — check memory, disk, or inline from browser
+    # Build context from scan data
     context_parts = []
-    scan = _latest_scan or _load_latest_from_disk()
-    # Also accept ticker data passed from the browser
     ticker_data = body.get("ticker_data")
+    if not ticker_data:
+        scan = _latest_scan or _load_latest_from_disk()
+        if ticker and scan:
+            ticker_data = next((x for x in scan.get("tickers", []) if x.get("ticker") == ticker), None)
+
     if ticker_data:
-        context_parts.append(f"Current scan data for {ticker}:\n{__import__('json').dumps(ticker_data, indent=2)}")
-    elif ticker and scan:
-        t = next((x for x in scan.get("tickers", []) if x.get("ticker") == ticker), None)
-        if t:
-            context_parts.append(f"Current scan data for {ticker}:\n{__import__('json').dumps(t, indent=2)}")
+        t = ticker_data
+        context_parts.append(f"""LIVE DATA for {ticker}:
+Price: ${t.get('price',0):.2f} ({t.get('day_change_pct',0):+.1f}% today)
+RSI-14: {t.get('rsi_14',0):.0f}
+IV Rank: {t.get('iv_rank',0):.0f}/100
+Trend: {t.get('trend','')}
+vs 200 SMA: {t.get('pct_from_200_sma',0):+.1f}%
+vs 50 SMA: {t.get('pct_from_50_sma',0):+.1f}%
+Off 52w High: {t.get('pct_off_52w_high',0):.1f}%
+6w Return: {t.get('return_6w_pct',0):+.1f}% | 6w Max DD: {t.get('max_dd_6w_pct',0):.1f}%
+P/E (trailing): {t.get('trailing_pe','N/A')} | P/E (forward): {t.get('forward_pe','N/A')}
+Beta: {t.get('beta','N/A')}
+Analyst Target: ${t.get('target_price','N/A')} ({t.get('upside_to_target_pct','N/A')}% upside)
+Recommendation: {t.get('recommendation','N/A')}
+HV 30d: {t.get('hv_30d',0):.1f}%
+Risk/Reward: {t.get('risk_reward','N/A')}
+Signal: {t.get('entry_action','')}
+Reason: {t.get('entry_reason','')}
+CSP Setup: Strike ${t.get('csp_strike',0)} | Premium ${t.get('csp_premium',0)} | Delta {t.get('csp_delta',0)} | Ann ROC {t.get('csp_ann_roc_pct',0)}%
+Capital Required: ${t.get('csp_capital_required',0):,.0f}
+If Assigned: Cost Basis ${t.get('cost_basis_if_assigned',0)} | CC Strike ${t.get('cc_strike',0)} | CC Premium ${t.get('cc_premium',0)}""")
 
     from dashboard.gemini_prompt import SYSTEM_PROMPT
     system_prompt = SYSTEM_PROMPT
@@ -1086,8 +1105,8 @@ async def api_chat(request: Request):
             contents=contents,
             config=genai.types.GenerateContentConfig(
                 system_instruction=system_prompt,
-                temperature=0.3,
-                max_output_tokens=1024,
+                temperature=0.5,
+                max_output_tokens=2048,
             ),
         )
         reply = response.text
