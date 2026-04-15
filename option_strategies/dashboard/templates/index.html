@@ -610,7 +610,7 @@ function renderChart(data) {
 
     // Main chart
     mainChart = LightweightCharts.createChart(cc, {
-        width: cc.clientWidth, height: 300,
+        width: cc.clientWidth, height: cc.clientHeight || 400,
         layout: { background: {color:'#1a1d27'}, textColor: '#8b8fa3', fontSize: 11 },
         grid: { vertLines:{color:'#2e3140'}, horzLines:{color:'#2e3140'} },
         crosshair: { mode: 0 },

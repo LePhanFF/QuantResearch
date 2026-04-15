@@ -38,7 +38,7 @@ body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); 
 .terminal-layout { display:flex; height:calc(100vh - 80px); }
 .left-panel { width:680px; min-width:320px; overflow:auto; flex-shrink:0; display:flex; flex-direction:column; }
 .right-panel { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
-.rt-panel { flex:1; overflow-y:auto; }
+.rt-panel { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
 
 /* Right panel sub-tabs */
 .right-tabs { display:flex; gap:2px; }
@@ -93,8 +93,9 @@ body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); 
 .tf-btn { background:none; border:1px solid var(--border); color:var(--text-dim); padding:3px 8px; font-size:10px; font-weight:600; cursor:pointer; border-radius:3px; font-family:'JetBrains Mono',monospace; }
 .tf-btn.active { background:var(--blue-bg); color:var(--blue); border-color:var(--blue); }
 .tf-btn:hover { color:var(--text); }
-.chart-container { height:300px; background:var(--surface); }
-.rsi-container { height:80px; background:var(--surface); border-top:1px solid var(--border); }
+.chart-wrapper { flex:1; min-height:0; }
+.chart-container { height:100%; background:var(--surface); }
+.rsi-container { height:80px; flex-shrink:0; background:var(--surface); border-top:1px solid var(--border); }
 
 /* Detail panel */
 .detail-content { padding:8px 16px; border-top:1px solid var(--border); }
