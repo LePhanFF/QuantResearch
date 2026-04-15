@@ -154,6 +154,19 @@ body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); 
 /* Delta column */
 .delta-col { color:var(--purple); font-size:10px; }
 
+/* Recommended row */
+.rec-row { background:#0a2e1a !important; }
+.rec-row td { border-top:1px solid var(--green) !important; border-bottom:1px solid var(--green) !important; }
+.strike-col.rec-put { color:var(--green); font-weight:700; background:#0a2e1a; }
+.strike-col.rec-call { color:var(--blue); font-weight:700; background:var(--blue-bg); }
+
+/* Recommendation banner */
+.chain-rec { display:flex; align-items:center; gap:10px; padding:6px 12px; background:#0a2e1a; border-bottom:1px solid var(--green); flex-wrap:wrap; }
+.rec-label { font-size:9px; font-weight:700; color:var(--green); text-transform:uppercase; letter-spacing:0.5px; }
+.rec-item { font-size:11px; font-family:'JetBrains Mono',monospace; padding:2px 8px; border-radius:3px; }
+.rec-item.sell { background:var(--green-bg); color:var(--green); }
+.rec-item.call { background:var(--blue-bg); color:var(--blue); }
+
 .chain-spot { padding:4px 16px; font-size:10px; color:var(--text-dim); background:var(--surface); border-top:1px solid var(--border); }
 
 /* Fundamentals */

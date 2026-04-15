@@ -503,7 +503,37 @@ async def api_options(ticker: str, expiry: str | None = None):
     expirations = list(t.options) if t.options else []
 
     if not expiry:
-        return JSONResponse({"ticker": ticker, "expirations": expirations})
+        # Find best expiry (30-45 DTE sweet spot)
+        from datetime import datetime as _dt
+        today = _dt.now()
+        best_expiry = None
+        best_dte = None
+        for exp in expirations:
+            try:
+                exp_date = _dt.strptime(exp, "%Y-%m-%d")
+                dte = (exp_date - today).days
+                if 28 <= dte <= 50:
+                    if best_dte is None or abs(dte - 35) < abs(best_dte - 35):
+                        best_expiry = exp
+                        best_dte = dte
+            except Exception:
+                continue
+        # Fallback: closest to 35 DTE if none in range
+        if not best_expiry and expirations:
+            for exp in expirations:
+                try:
+                    dte = (_dt.strptime(exp, "%Y-%m-%d") - today).days
+                    if dte > 7 and (best_dte is None or abs(dte - 35) < abs(best_dte - 35)):
+                        best_expiry = exp
+                        best_dte = dte
+                except Exception:
+                    continue
+        return JSONResponse({
+            "ticker": ticker,
+            "expirations": expirations,
+            "recommended_expiry": best_expiry,
+            "recommended_dte": best_dte,
+        })
 
     if expiry not in expirations:
         return JSONResponse({"error": f"Invalid expiry {expiry}"}, status_code=400)
@@ -583,13 +613,51 @@ async def api_options(ticker: str, expiry: str | None = None):
     puts = clean(chain.puts, "PUT")
     calls = clean(chain.calls, "CALL")
 
+    # Find recommended strikes
+    # CSP: target ~0.20-0.30 delta put (OTM)
+    rec_put_strike = None
+    rec_put = None
+    for p in puts:
+        d = p.get("delta")
+        if d is not None and -0.35 <= d <= -0.18:
+            if rec_put is None or abs(d - (-0.25)) < abs(rec_put["delta"] - (-0.25)):
+                rec_put = p
+                rec_put_strike = p["strike"]
+
+    # CC: target ~0.25-0.30 delta call (OTM)
+    rec_call_strike = None
+    rec_call = None
+    for c in calls:
+        d = c.get("delta")
+        if d is not None and 0.18 <= d <= 0.35:
+            if rec_call is None or abs(d - 0.25) < abs(rec_call["delta"] - 0.25):
+                rec_call = c
+                rec_call_strike = c["strike"]
+
+    # Annual ROC for recommended put
+    rec_put_roc = None
+    if rec_put and rec_put_strike and rec_put_strike > 0:
+        prem = rec_put["mid"] if rec_put["mid"] > 0 else rec_put["last"]
+        if prem > 0 and dte > 0:
+            rec_put_roc = round(prem / rec_put_strike * (365 / dte) * 100, 1)
+
     return JSONResponse({
         "ticker": ticker,
         "expiry": expiry,
+        "dte": dte,
         "spot": spot,
         "puts": puts,
         "calls": calls,
         "expirations": expirations,
+        "recommended": {
+            "put_strike": rec_put_strike,
+            "put_delta": rec_put["delta"] if rec_put else None,
+            "put_premium": rec_put["mid"] if rec_put and rec_put["mid"] > 0 else (rec_put["last"] if rec_put else None),
+            "put_ann_roc": rec_put_roc,
+            "call_strike": rec_call_strike,
+            "call_delta": rec_call["delta"] if rec_call else None,
+            "call_premium": rec_call["mid"] if rec_call and rec_call["mid"] > 0 else (rec_call["last"] if rec_call else None),
+        },
     })
 
 
