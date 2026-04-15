@@ -693,6 +693,63 @@ async def api_chart(ticker: str, tf: str = "1Y"):
             "color": "#26a69a80" if c >= o else "#ef535080",
         })
 
+    # ── Trade signals (overlay markers on chart) ──
+    signals = []
+    if not intraday and len(close) > 50:
+        sma200_s = close.rolling(200).mean()
+        # IV rank proxy (rolling 30d vol rank over 180d)
+        log_ret = np.log(close / close.shift(1))
+        rv30 = log_ret.rolling(30).std() * np.sqrt(252)
+        rv_rank = rv30.rolling(180).apply(
+            lambda x: (x.iloc[-1] - x.min()) / (x.max() - x.min()) * 100
+            if x.max() != x.min() else 50, raw=False)
+
+        for i in range(1, len(close)):
+            dt = close.index[i]
+            p = float(close.iloc[i])
+            r = float(rsi.iloc[i]) if i < len(rsi) else 50
+            r_prev = float(rsi.iloc[i-1]) if i-1 < len(rsi) else 50
+            sma = float(sma200_s.iloc[i]) if not pd.isna(sma200_s.iloc[i]) else p
+            ivr = float(rv_rank.iloc[i]) if i < len(rv_rank) and not pd.isna(rv_rank.iloc[i]) else 50
+
+            # SELL PUT signal: RSI crosses below 30 + above 200 SMA + IVR > 30
+            if r < 30 and r_prev >= 30 and p > sma and ivr > 30:
+                signals.append({
+                    "time": fmt_time(dt), "position": "belowBar",
+                    "color": "#22c55e", "shape": "arrowUp",
+                    "text": f"SELL PUT (RSI {r:.0f}, IVR {ivr:.0f})",
+                })
+            # BUY STOCK signal: RSI crosses below 25 + above 200 SMA + IVR < 25
+            elif r < 25 and r_prev >= 25 and p > sma:
+                signals.append({
+                    "time": fmt_time(dt), "position": "belowBar",
+                    "color": "#3b82f6", "shape": "arrowUp",
+                    "text": f"BUY (RSI {r:.0f}, oversold)",
+                })
+            # ACCUMULATE: price touches 200 SMA from above (within 1%)
+            elif abs(p - sma) / sma < 0.01 and p > sma * 0.99:
+                prev_dist = abs(float(close.iloc[i-1]) - sma) / sma
+                if prev_dist > 0.02:
+                    signals.append({
+                        "time": fmt_time(dt), "position": "belowBar",
+                        "color": "#a855f7", "shape": "circle",
+                        "text": "200 SMA support",
+                    })
+            # STAND ASIDE: RSI crosses above 70 (overbought)
+            elif r > 70 and r_prev <= 70:
+                signals.append({
+                    "time": fmt_time(dt), "position": "aboveBar",
+                    "color": "#eab308", "shape": "arrowDown",
+                    "text": f"OVERBOUGHT (RSI {r:.0f})",
+                })
+            # SELL CALL: RSI crosses above 75 (very overbought, sell CC aggressively)
+            elif r > 75 and r_prev <= 75:
+                signals.append({
+                    "time": fmt_time(dt), "position": "aboveBar",
+                    "color": "#ef4444", "shape": "arrowDown",
+                    "text": f"SELL CALL (RSI {r:.0f})",
+                })
+
     return JSONResponse({
         "ticker": ticker,
         "timeframe": tf.upper(),
@@ -704,6 +761,7 @@ async def api_chart(ticker: str, tf: str = "1Y"):
         "sma200": series_to_list(sma200),
         "rsi": series_to_list(rsi),
         "volume": vol_data,
+        "signals": signals,
     })
 
 

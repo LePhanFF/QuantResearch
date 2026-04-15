@@ -245,6 +245,7 @@ const GROUPS = {
     'XLK':'INDEX','XLV':'INDEX','XLI':'INDEX','XLRE':'INDEX',
     'AAPL':'MEGA','MSFT':'MEGA','AMZN':'MEGA','GOOGL':'MEGA','META':'MEGA','BRK-B':'MEGA',
     'NVDA':'GROWTH','AVGO':'GROWTH','TSM':'GROWTH','AMD':'GROWTH','TXN':'GROWTH','INTC':'GROWTH',
+    'MU':'GROWTH','MRVL':'GROWTH','SOFI':'GROWTH','NU':'GROWTH','MELI':'GROWTH',
     'TSLA':'GROWTH','NFLX':'GROWTH','CRM':'GROWTH','DIS':'GROWTH',
     'COST':'STAPLES','WMT':'STAPLES','KO':'STAPLES','PEP':'STAPLES','MCD':'STAPLES',
     'HD':'STAPLES','LOW':'STAPLES','TGT':'STAPLES','SBUX':'STAPLES','NKE':'STAPLES',
@@ -524,6 +525,17 @@ function renderChart(data) {
     ema50.setData(data.ema50);
     const sma200 = mainChart.addLineSeries({color:'#a855f7',lineWidth:2,priceScaleId:'right',lineStyle:2});
     sma200.setData(data.sma200);
+
+    // Signal markers
+    if (data.signals && data.signals.length > 0) {
+        candle.setMarkers(data.signals.map(s => ({
+            time: s.time,
+            position: s.position,
+            color: s.color,
+            shape: s.shape,
+            text: s.text,
+        })));
+    }
 
     mainChart.timeScale().fitContent();
 
