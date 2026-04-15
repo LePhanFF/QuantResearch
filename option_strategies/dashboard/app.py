@@ -1044,8 +1044,17 @@ async def api_heatmap():
 @app.post("/api/chat")
 async def api_chat(request: Request):
     """Chat with Gemini about a ticker using live scan data as context."""
+    try:
+        return await _do_chat(request)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"reply": f"Chat error: {str(e)}"})
+
+
+async def _do_chat(request: Request):
     if not GEMINI_API_KEY:
-        return JSONResponse({"error": "GEMINI_API_KEY not set"}, status_code=500)
+        return JSONResponse({"reply": "GEMINI_API_KEY not set. Set it in Cloud Run env vars."})
 
     body = await request.json()
     message = body.get("message", "")
