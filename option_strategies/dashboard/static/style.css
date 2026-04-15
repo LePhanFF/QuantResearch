@@ -375,6 +375,28 @@ body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); 
 }
 .login-input:focus { border-color:var(--blue); }
 
+/* Guide button */
+.guide-btn { background:var(--green-bg) !important; color:var(--green) !important; border-color:var(--green) !important; }
+
+/* Shepherd tour overrides */
+.shepherd-theme-custom { max-width:400px; }
+.shepherd-element { background:var(--surface) !important; border:1px solid var(--border) !important; border-radius:8px !important; }
+.shepherd-text { color:var(--text) !important; font-size:12px !important; line-height:1.6 !important; font-family:'Inter',sans-serif !important; }
+.shepherd-text p { margin:0 0 8px; }
+.shepherd-text ul { margin:4px 0; padding-left:16px; }
+.shepherd-text li { margin:2px 0; }
+.shepherd-text b { color:var(--text); }
+.shepherd-header { background:var(--surface2) !important; border-bottom:1px solid var(--border) !important; padding:10px 14px !important; border-radius:8px 8px 0 0 !important; }
+.shepherd-title { color:var(--green) !important; font-size:13px !important; font-weight:700 !important; font-family:'Inter',sans-serif !important; }
+.shepherd-cancel-icon { color:var(--text-dim) !important; }
+.shepherd-cancel-icon:hover { color:var(--text) !important; }
+.shepherd-footer { padding:8px 14px !important; border-top:1px solid var(--border) !important; }
+.shepherd-btn-next { background:var(--green) !important; color:#000 !important; border:none !important; padding:5px 14px !important; border-radius:4px !important; font-size:11px !important; font-weight:700 !important; cursor:pointer !important; }
+.shepherd-btn-back { background:var(--surface2) !important; color:var(--text-dim) !important; border:1px solid var(--border) !important; padding:5px 14px !important; border-radius:4px !important; font-size:11px !important; cursor:pointer !important; }
+.shepherd-btn-skip { background:none !important; color:var(--text-dim) !important; border:none !important; padding:5px 10px !important; font-size:10px !important; cursor:pointer !important; }
+.shepherd-modal-overlay-container { fill:rgba(0,0,0,0.6) !important; }
+.shepherd-arrow:before { background:var(--surface) !important; border:1px solid var(--border) !important; }
+
 /* Spinner */
 .spinner { width:16px; height:16px; border:2px solid var(--border); border-top:2px solid var(--blue); border-radius:50%; animation:spin .6s linear infinite; margin:0 auto 8px; }
 @keyframes spin { to { transform:rotate(360deg); } }
