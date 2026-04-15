@@ -610,7 +610,7 @@ function renderChart(data) {
 
     // Main chart
     mainChart = LightweightCharts.createChart(cc, {
-        width: cc.clientWidth, height: Math.max(cc.clientHeight, 250),
+        width: cc.clientWidth, height: 300,
         layout: { background: {color:'#1a1d27'}, textColor: '#8b8fa3', fontSize: 11 },
         grid: { vertLines:{color:'#2e3140'}, horzLines:{color:'#2e3140'} },
         crosshair: { mode: 0 },
@@ -1429,13 +1429,14 @@ function drawVolumeProfile() {
 }
 
 function _hookVPRedraw() {
-    if (mainChart) {
-        mainChart.timeScale().subscribeVisibleLogicalRangeChange(() => {
-            if (document.getElementById('vp-toggle')?.checked) drawVolumeProfile();
-        });
-        // Also redraw when price scale changes
-        mainChart.subscribeCrosshairMove(() => {});  // keeps chart active
-    }
+    if (!mainChart) return;
+    const redrawVP = () => {
+        if (document.getElementById('vp-toggle')?.checked) drawVolumeProfile();
+    };
+    // Redraw on X-axis zoom/scroll
+    mainChart.timeScale().subscribeVisibleLogicalRangeChange(redrawVP);
+    // Redraw on Y-axis / crosshair changes (catches price scale drag)
+    mainChart.subscribeCrosshairMove(redrawVP);
 }
 
 // ── Heatmap ───────────────────────────────────────────────────

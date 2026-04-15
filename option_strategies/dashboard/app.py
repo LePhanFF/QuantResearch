@@ -926,7 +926,7 @@ async def api_chart(ticker: str, tf: str = "1Y"):
 
     # ── Volume profile (price bins with buy/sell split) ──
     vol_profile = []
-    if not intraday and len(close) > 20:
+    if len(close) > 20:
         closes = close.values
         opens = df["Open"].values if "Open" in df.columns else closes
         volumes = df["Volume"].values if "Volume" in df.columns else np.zeros(len(close))
