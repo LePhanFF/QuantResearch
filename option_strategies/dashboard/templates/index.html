@@ -603,7 +603,7 @@ function renderChart(data) {
     })));
     if (data.earnings) {
         for (const e of data.earnings) {
-            const label = e.upcoming ? `EARNINGS (est $${e.eps_estimate||'?'})` :
+            const label = e.upcoming ? `EARNINGS ${e.time} (est $${e.eps_estimate||'?'})` :
                 `EARNINGS $${e.eps_actual||'?'} ${e.surprise_pct!=null?(e.surprise_pct>0?'+':'')+e.surprise_pct+'%':''}`;
             markers.push({
                 time: e.time, position: 'aboveBar',
