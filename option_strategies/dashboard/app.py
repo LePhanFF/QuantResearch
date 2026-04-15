@@ -1032,10 +1032,15 @@ async def api_chat(request: Request):
     ticker = body.get("ticker")
     history = body.get("history", [])
 
-    # Build context from scan data
+    # Build context from scan data — check memory, disk, or inline from browser
     context_parts = []
-    if ticker and _latest_scan:
-        t = next((x for x in _latest_scan.get("tickers", []) if x.get("ticker") == ticker), None)
+    scan = _latest_scan or _load_latest_from_disk()
+    # Also accept ticker data passed from the browser
+    ticker_data = body.get("ticker_data")
+    if ticker_data:
+        context_parts.append(f"Current scan data for {ticker}:\n{__import__('json').dumps(ticker_data, indent=2)}")
+    elif ticker and scan:
+        t = next((x for x in scan.get("tickers", []) if x.get("ticker") == ticker), None)
         if t:
             context_parts.append(f"Current scan data for {ticker}:\n{__import__('json').dumps(t, indent=2)}")
 

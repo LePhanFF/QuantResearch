@@ -1221,12 +1221,18 @@ async function sendChat() {
     const typingId = appendChatMsg('assistant', '...');
 
     try {
+        // Pass ticker scan data directly so Gemini always has context
+        let tickerData = null;
+        if (selectedTicker && scanData) {
+            tickerData = scanData.tickers.find(x => x.ticker === selectedTicker);
+        }
         const r = await fetch('/api/chat', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 message: msg,
                 ticker: selectedTicker,
+                ticker_data: tickerData,
                 history: chatHistory.slice(-10),
             }),
         });
