@@ -185,6 +185,11 @@ const TOUR_STEPS = [
  */
 function startTour() {
     // Make sure we're on the main view
+    if (typeof Shepherd === 'undefined') {
+        alert('Tour is still loading. Please try again in a moment.');
+        return;
+    }
+
     const main = document.querySelector('.terminal-layout');
     if (main) main.style.display = 'flex';
     document.getElementById('playbook-view').style.display = 'none';
