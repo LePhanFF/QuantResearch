@@ -613,8 +613,37 @@ async def api_options(ticker: str, expiry: str | None = None):
     puts = clean(chain.puts, "PUT")
     calls = clean(chain.calls, "CALL")
 
+    # Mark each option with a zone for highlighting
+    for p in puts:
+        d = p.get("delta")
+        if d is not None:
+            ad = abs(d)
+            if 0.20 <= ad <= 0.30:
+                p["zone"] = "optimal"    # best theta/IV sweet spot
+            elif 0.15 <= ad < 0.20 or 0.30 < ad <= 0.35:
+                p["zone"] = "good"       # acceptable range
+            elif 0.10 <= ad < 0.15 or 0.35 < ad <= 0.50:
+                p["zone"] = "wide"       # visible but not ideal
+            else:
+                p["zone"] = None
+        else:
+            p["zone"] = None
+
+    for c in calls:
+        d = c.get("delta")
+        if d is not None:
+            if 0.20 <= d <= 0.30:
+                c["zone"] = "optimal"
+            elif 0.15 <= d < 0.20 or 0.30 < d <= 0.35:
+                c["zone"] = "good"
+            elif 0.10 <= d < 0.15 or 0.35 < d <= 0.50:
+                c["zone"] = "wide"
+            else:
+                c["zone"] = None
+        else:
+            c["zone"] = None
+
     # Find recommended strikes
-    # CSP: target ~0.20-0.30 delta put (OTM)
     rec_put_strike = None
     rec_put = None
     for p in puts:
@@ -624,7 +653,6 @@ async def api_options(ticker: str, expiry: str | None = None):
                 rec_put = p
                 rec_put_strike = p["strike"]
 
-    # CC: target ~0.25-0.30 delta call (OTM)
     rec_call_strike = None
     rec_call = None
     for c in calls:
@@ -821,6 +849,59 @@ async def api_chart(ticker: str, tf: str = "1Y"):
                     "text": f"SELL CALL (RSI {r:.0f})",
                 })
 
+    # ── Earnings dates ──
+    earnings = []
+    if not intraday:
+        try:
+            tk = yf.Ticker(ticker)
+            ed = tk.earnings_dates
+            if ed is not None and len(ed) > 0:
+                for dt_idx, row in ed.iterrows():
+                    try:
+                        edate = pd.Timestamp(dt_idx).tz_localize(None).strftime("%Y-%m-%d")
+                    except Exception:
+                        edate = str(dt_idx)[:10]
+                    eps_est = row.get("EPS Estimate")
+                    eps_act = row.get("Reported EPS")
+                    surprise = row.get("Surprise(%)")
+                    def safe_num(v):
+                        try:
+                            f = float(v)
+                            return round(f, 2) if f == f else None
+                        except Exception:
+                            return None
+                    is_upcoming = safe_num(eps_act) is None
+                    earnings.append({
+                        "time": edate,
+                        "eps_estimate": safe_num(eps_est),
+                        "eps_actual": safe_num(eps_act),
+                        "surprise_pct": safe_num(surprise),
+                        "upcoming": is_upcoming,
+                    })
+        except Exception:
+            pass
+
+    # ── Volume profile (price bins with volume) ──
+    vol_profile = []
+    if not intraday and len(close) > 20:
+        prices = close.values
+        volumes = df["Volume"].values if "Volume" in df.columns else np.zeros(len(close))
+        price_min, price_max = float(np.nanmin(prices)), float(np.nanmax(prices))
+        if price_max > price_min:
+            n_bins = 30
+            bin_size = (price_max - price_min) / n_bins
+            for i in range(n_bins):
+                lo = price_min + i * bin_size
+                hi = lo + bin_size
+                mask = (prices >= lo) & (prices < hi)
+                total_vol = float(np.nansum(volumes[mask]))
+                vol_profile.append({
+                    "price": round((lo + hi) / 2, 2),
+                    "volume": int(total_vol),
+                    "lo": round(lo, 2),
+                    "hi": round(hi, 2),
+                })
+
     return JSONResponse({
         "ticker": ticker,
         "timeframe": tf.upper(),
@@ -833,7 +914,79 @@ async def api_chart(ticker: str, tf: str = "1Y"):
         "rsi": series_to_list(rsi),
         "volume": vol_data,
         "signals": signals,
+        "earnings": earnings,
+        "volume_profile": vol_profile,
     })
+
+
+@app.get("/api/heatmap")
+async def api_heatmap():
+    """Return sector-level heatmap data from latest scan."""
+    global _latest_scan
+    scan = _latest_scan
+    if not scan:
+        scan = _load_latest_from_disk()
+    if not scan or not scan.get("tickers"):
+        return JSONResponse({"error": "Run a scan first"}, status_code=400)
+
+    tickers = [t for t in scan["tickers"] if "error" not in t]
+
+    # Group by sector
+    sectors = {}
+    for t in tickers:
+        sec = t.get("sector", "Other")
+        if sec not in sectors:
+            sectors[sec] = {"tickers": [], "total_ivr": 0, "total_rsi": 0,
+                            "total_chg": 0, "count": 0, "sell_put": 0,
+                            "buy_stock": 0, "stand_aside": 0}
+        s = sectors[sec]
+        s["tickers"].append({
+            "ticker": t["ticker"],
+            "price": t.get("price", 0),
+            "day_change_pct": t.get("day_change_pct", 0),
+            "iv_rank": t.get("iv_rank", 0),
+            "rsi_14": t.get("rsi_14", 50),
+            "entry_action": t.get("entry_action", ""),
+            "csp_ann_roc_pct": t.get("csp_ann_roc_pct", 0),
+        })
+        s["total_ivr"] += t.get("iv_rank", 0)
+        s["total_rsi"] += t.get("rsi_14", 50)
+        s["total_chg"] += t.get("day_change_pct", 0)
+        s["count"] += 1
+        action = t.get("entry_action", "")
+        if action == "SELL_PUT": s["sell_put"] += 1
+        elif action == "BUY_STOCK": s["buy_stock"] += 1
+        else: s["stand_aside"] += 1
+
+    result = []
+    for sec, s in sectors.items():
+        n = s["count"]
+        avg_ivr = s["total_ivr"] / n if n else 0
+        avg_rsi = s["total_rsi"] / n if n else 50
+        avg_chg = s["total_chg"] / n if n else 0
+        # Sector health: oversold/neutral/overbought
+        if avg_rsi < 35:
+            health = "OVERSOLD"
+        elif avg_rsi > 65:
+            health = "OVERBOUGHT"
+        else:
+            health = "NEUTRAL"
+
+        result.append({
+            "sector": sec,
+            "count": n,
+            "avg_ivr": round(avg_ivr, 1),
+            "avg_rsi": round(avg_rsi, 1),
+            "avg_change_pct": round(avg_chg, 2),
+            "health": health,
+            "sell_put": s["sell_put"],
+            "buy_stock": s["buy_stock"],
+            "stand_aside": s["stand_aside"],
+            "tickers": sorted(s["tickers"], key=lambda x: x["iv_rank"], reverse=True),
+        })
+
+    result.sort(key=lambda x: x["avg_ivr"], reverse=True)
+    return JSONResponse({"sectors": result})
 
 
 @app.post("/api/chat")

@@ -20,6 +20,7 @@
             <button class="tab" onclick="switchView('accumulate')">Accumulate</button>
             <button class="tab" onclick="switchView('stand-aside')">Stand Aside</button>
             <button class="tab" onclick="switchView('basket')">Basket</button>
+            <button class="tab" onclick="switchView('heatmap')">Heatmap</button>
             <button class="tab" onclick="switchView('playbook')">Playbook</button>
         </div>
     </div>
@@ -92,7 +93,8 @@
 
         <!-- Chart tab -->
         <div id="rt-chart" class="rt-panel" style="display:none">
-            <div class="tf-buttons" style="padding:4px 8px;border-bottom:1px solid var(--border)">
+            <div class="tf-buttons" style="padding:4px 8px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+            <div>
                 <button class="tf-btn" onclick="changeTF('1D')">1D</button>
                 <button class="tf-btn" onclick="changeTF('5D')">5D</button>
                 <button class="tf-btn" onclick="changeTF('1M')">1M</button>
@@ -101,6 +103,8 @@
                 <button class="tf-btn active" onclick="changeTF('1Y')">1Y</button>
                 <button class="tf-btn" onclick="changeTF('2Y')">2Y</button>
                 <button class="tf-btn" onclick="changeTF('5Y')">5Y</button>
+            </div>
+            <label class="vp-toggle"><input type="checkbox" id="vp-toggle" onchange="toggleVolProfile()"> Vol Profile</label>
             </div>
             <div id="chart-container" class="chart-container"></div>
             <div id="rsi-container" class="rsi-container"></div>
@@ -208,6 +212,12 @@
         </table>
     </div>
     <div class="basket-sectors" id="basket-sectors"></div>
+</div>
+
+<!-- Heatmap -->
+<div id="heatmap-view" style="display:none" class="heatmap-panel">
+    <h2 style="color:var(--green);font-size:14px;margin-bottom:12px">SECTOR HEATMAP</h2>
+    <div id="heatmap-grid" class="heatmap-grid"></div>
 </div>
 
 <!-- Playbook (hidden) -->
@@ -473,10 +483,12 @@ function switchView(view) {
     event.target.classList.add('active');
     const pb = document.getElementById('playbook-view');
     const bk = document.getElementById('basket-view');
+    const hm = document.getElementById('heatmap-view');
     const main = document.querySelector('.terminal-layout');
-    pb.style.display = 'none'; bk.style.display = 'none'; main.style.display = 'none';
+    pb.style.display = 'none'; bk.style.display = 'none'; hm.style.display = 'none'; main.style.display = 'none';
     if (view==='playbook') pb.style.display = 'block';
     else if (view==='basket') { bk.style.display = 'block'; buildBasket(); }
+    else if (view==='heatmap') { hm.style.display = 'block'; loadHeatmap(); }
     else { main.style.display = 'flex'; render(); }
 }
 
@@ -584,17 +596,27 @@ function renderChart(data) {
     const sma200 = mainChart.addLineSeries({color:'#a855f7',lineWidth:2,priceScaleId:'right',lineStyle:2});
     sma200.setData(data.sma200);
 
-    // Signal markers
-    if (data.signals && data.signals.length > 0) {
-        candle.setMarkers(data.signals.map(s => ({
-            time: s.time,
-            position: s.position,
-            color: s.color,
-            shape: s.shape,
-            text: s.text,
-        })));
+    // Combine trade signals + earnings markers
+    let markers = [];
+    if (data.signals) markers = markers.concat(data.signals.map(s => ({
+        time: s.time, position: s.position, color: s.color, shape: s.shape, text: s.text,
+    })));
+    if (data.earnings) {
+        for (const e of data.earnings) {
+            const label = e.upcoming ? `EARNINGS (est $${e.eps_estimate||'?'})` :
+                `EARNINGS $${e.eps_actual||'?'} ${e.surprise_pct!=null?(e.surprise_pct>0?'+':'')+e.surprise_pct+'%':''}`;
+            markers.push({
+                time: e.time, position: 'aboveBar',
+                color: e.upcoming ? '#f97316' : (e.surprise_pct > 0 ? '#22c55e' : '#ef4444'),
+                shape: 'square', text: label,
+            });
+        }
     }
+    // Sort markers by time (required by lightweight-charts)
+    markers.sort((a,b) => a.time < b.time ? -1 : a.time > b.time ? 1 : 0);
+    if (markers.length > 0) candle.setMarkers(markers);
 
+    _lastChartData = data;  // store for volume profile
     mainChart.timeScale().fitContent();
 
     // RSI chart
@@ -790,7 +812,12 @@ function renderChain() {
         const isATM = strike === atmStrike;
         const isRecPut = rec.put_strike && Math.abs(strike - rec.put_strike) < 0.01;
         const isRecCall = rec.call_strike && Math.abs(strike - rec.call_strike) < 0.01;
-        const rowClass = (isRecPut || isRecCall) ? ' rec-row' : (isATM ? ' atm-row' : (strike < spot ? ' itm-put' : (strike > spot ? ' itm-call' : '')));
+        // Zone highlighting: optimal (green bg), good (subtle), wide (very subtle)
+        const pZone = p.zone || null;
+        const cZone = c.zone || null;
+        const bestZone = (pZone === 'optimal' || cZone === 'optimal') ? ' zone-optimal' :
+                         (pZone === 'good' || cZone === 'good') ? ' zone-good' : '';
+        const rowClass = (isRecPut || isRecCall) ? ' rec-row' : (isATM ? ' atm-row' : bestZone + (strike < spot ? ' itm-put' : (strike > spot ? ' itm-call' : '')));
 
         // Delta display helper
         function fmtDelta(d) {
@@ -1222,6 +1249,121 @@ function formatReply(text) {
         .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
         .replace(/`(.*?)`/g, '<code>$1</code>')
         .replace(/\n/g, '<br>');
+}
+
+// ── Volume Profile toggle ─────────────────────────────────────
+let vpSeries = null, _lastChartData = null;
+
+function toggleVolProfile() {
+    const on = document.getElementById('vp-toggle').checked;
+    if (!_lastChartData || !mainChart) return;
+    if (on && _lastChartData.volume_profile) {
+        // Draw volume profile as horizontal histogram using line markers
+        // We'll use a second price scale on the left
+        if (vpSeries) { mainChart.removeSeries(vpSeries); vpSeries = null; }
+        const vp = _lastChartData.volume_profile;
+        const maxVol = Math.max(...vp.map(v => v.volume));
+        // Overlay as histogram on left side using baseline series
+        // Simpler: add markers at price levels
+        // Actually use horizontal lines with varying width simulated by opacity
+        vpSeries = mainChart.addHistogramSeries({
+            priceScaleId: 'vp', color: '#3b82f680',
+            priceFormat: { type: 'volume' },
+        });
+        mainChart.priceScale('vp').applyOptions({
+            scaleMargins: { top: 0, bottom: 0 },
+            visible: false,
+        });
+        // Convert to time-series: show volume at each price as last bar
+        const lastTime = _lastChartData.candles[_lastChartData.candles.length-1]?.time;
+        if (lastTime) {
+            // Can't easily do horizontal bars in lightweight-charts
+            // Instead show price level lines for high-volume nodes
+            if (vpSeries) { mainChart.removeSeries(vpSeries); vpSeries = null; }
+            const top3 = [...vp].sort((a,b) => b.volume - a.volume).slice(0, 5);
+            vpSeries = [];
+            for (const node of top3) {
+                const ls = mainChart.addLineSeries({
+                    color: '#3b82f650', lineWidth: 2, lineStyle: 0,
+                    priceScaleId: 'right', lastValueVisible: false,
+                    priceLineVisible: false,
+                });
+                const first = _lastChartData.candles[0]?.time;
+                ls.setData([{time: first, value: node.price}, {time: lastTime, value: node.price}]);
+                // Add price line
+                ls.createPriceLine({
+                    price: node.price, color: '#3b82f680', lineWidth: 1, lineStyle: 2,
+                    axisLabelVisible: true,
+                    title: `VP ${(node.volume/1e6).toFixed(0)}M`,
+                });
+                vpSeries.push(ls);
+            }
+        }
+    } else {
+        if (Array.isArray(vpSeries)) {
+            vpSeries.forEach(s => mainChart.removeSeries(s));
+        } else if (vpSeries) {
+            mainChart.removeSeries(vpSeries);
+        }
+        vpSeries = null;
+    }
+}
+
+// ── Heatmap ───────────────────────────────────────────────────
+async function loadHeatmap() {
+    const grid = document.getElementById('heatmap-grid');
+    grid.innerHTML = '<div class="empty-msg"><div class="spinner"></div>Loading heatmap...</div>';
+    try {
+        const r = await fetch('/api/heatmap');
+        const d = await r.json();
+        if (d.error) { grid.innerHTML = `<div class="empty-msg">${d.error}</div>`; return; }
+        renderHeatmap(d.sectors);
+    } catch(e) {
+        grid.innerHTML = '<div class="empty-msg">Failed</div>';
+    }
+}
+
+function renderHeatmap(sectors) {
+    const grid = document.getElementById('heatmap-grid');
+    grid.innerHTML = sectors.map(s => {
+        const healthCls = s.health === 'OVERSOLD' ? 'hm-oversold' : s.health === 'OVERBOUGHT' ? 'hm-overbought' : 'hm-neutral';
+        const chgCls = s.avg_change_pct >= 0 ? 'green' : 'red';
+        return `
+        <div class="hm-sector ${healthCls}">
+            <div class="hm-header">
+                <span class="hm-name">${s.sector}</span>
+                <span class="hm-health">${s.health}</span>
+            </div>
+            <div class="hm-stats">
+                <span>IVR <b>${s.avg_ivr.toFixed(0)}</b></span>
+                <span>RSI <b>${s.avg_rsi.toFixed(0)}</b></span>
+                <span class="${chgCls}">${s.avg_change_pct>=0?'+':''}${s.avg_change_pct.toFixed(1)}%</span>
+            </div>
+            <div class="hm-signals">
+                <span class="green">${s.sell_put} sell</span>
+                <span class="blue">${s.buy_stock} buy</span>
+                <span class="yellow">${s.stand_aside} aside</span>
+            </div>
+            <div class="hm-tickers">${s.tickers.map(t => {
+                const cls = t.entry_action === 'SELL_PUT' ? 'hmt-sell' : t.entry_action === 'BUY_STOCK' ? 'hmt-buy' : 'hmt-aside';
+                return `<span class="hm-tick ${cls}" onclick="goToTicker('${t.ticker}')" title="IVR:${t.iv_rank.toFixed(0)} RSI:${t.rsi_14.toFixed(0)} ${t.entry_action}">${t.ticker}</span>`;
+            }).join('')}</div>
+        </div>`;
+    }).join('');
+}
+
+function goToTicker(ticker) {
+    // Switch to opportunities view and select the ticker
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.tab').classList.add('active'); // first tab
+    const pb = document.getElementById('playbook-view');
+    const bk = document.getElementById('basket-view');
+    const hm = document.getElementById('heatmap-view');
+    const main = document.querySelector('.terminal-layout');
+    pb.style.display = 'none'; bk.style.display = 'none'; hm.style.display = 'none';
+    main.style.display = 'flex';
+    render();
+    selectTicker(ticker);
 }
 </script>
 </body>
