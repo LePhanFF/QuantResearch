@@ -37,8 +37,9 @@ body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); 
 /* Terminal layout */
 .terminal-layout { display:flex; height:calc(100vh - 80px); }
 .left-panel { width:680px; min-width:320px; overflow:auto; flex-shrink:0; display:flex; flex-direction:column; }
-.right-panel { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
-.rt-panel { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
+.right-panel { flex:1; display:flex; flex-direction:column; min-height:0; overflow:hidden; }
+.rt-panel { flex:1; display:flex; flex-direction:column; min-height:0; overflow-y:auto; }
+.rt-panel[id="rt-chart"] { overflow:hidden; }  /* chart tab should not scroll */
 
 /* Right panel sub-tabs */
 .right-tabs { display:flex; gap:2px; }
@@ -93,7 +94,7 @@ body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); 
 .tf-btn { background:none; border:1px solid var(--border); color:var(--text-dim); padding:3px 8px; font-size:10px; font-weight:600; cursor:pointer; border-radius:3px; font-family:'JetBrains Mono',monospace; }
 .tf-btn.active { background:var(--blue-bg); color:var(--blue); border-color:var(--blue); }
 .tf-btn:hover { color:var(--text); }
-.chart-wrapper { flex:1; min-height:0; }
+.chart-wrapper { flex:1; min-height:0; position:relative; }
 .chart-container { height:100%; background:var(--surface); }
 .rsi-container { height:80px; flex-shrink:0; background:var(--surface); border-top:1px solid var(--border); }
 
@@ -181,8 +182,7 @@ body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); 
 
 .chain-spot { padding:4px 16px; font-size:10px; color:var(--text-dim); background:var(--surface); border-top:1px solid var(--border); }
 
-/* Chart wrapper for VP overlay */
-.chart-wrapper { position:relative; }
+/* VP overlay positioning */
 
 /* Volume profile overlay */
 .vp-overlay {
