@@ -1071,30 +1071,43 @@ async def _do_chat(request: Request):
         if ticker and scan:
             ticker_data = next((x for x in scan.get("tickers", []) if x.get("ticker") == ticker), None)
 
+    def _n(v, default=0):
+        """Safe number: None/NaN -> default."""
+        if v is None: return default
+        try:
+            f = float(v)
+            return f if f == f else default
+        except (TypeError, ValueError):
+            return default
+
+    def _s(v, default='N/A'):
+        """Safe string."""
+        return str(v) if v is not None else default
+
     def _fmt(t):
         pe = t.get('trailing_pe')
         pe_str = f"{pe:.0f}" if pe is not None else "N/A"
-        return (f"{t.get('ticker','?'):>5} ${t.get('price',0) or 0:>8.2f} "
-                f"RSI:{t.get('rsi_14',0) or 0:>3.0f} IVR:{t.get('iv_rank',0) or 0:>3.0f} "
+        return (f"{_s(t.get('ticker'),'?'):>5} ${_n(t.get('price')):>8.2f} "
+                f"RSI:{_n(t.get('rsi_14')):>3.0f} IVR:{_n(t.get('iv_rank')):>3.0f} "
                 f"P/E:{pe_str:>5} "
-                f"vs200:{t.get('pct_from_200_sma',0) or 0:>+5.1f}% "
-                f"ROC:{t.get('csp_ann_roc_pct',0) or 0:>5.1f}% "
-                f"R/R:{t.get('risk_reward','?')} "
-                f"-> {t.get('entry_action','?')}")
+                f"vs200:{_n(t.get('pct_from_200_sma')):>+5.1f}% "
+                f"ROC:{_n(t.get('csp_ann_roc_pct')):>5.1f}% "
+                f"R/R:{_s(t.get('risk_reward'),'?')} "
+                f"-> {_s(t.get('entry_action'),'?')}")
 
     if ticker_data:
         t = ticker_data
         context_parts.append(f"""SELECTED TICKER: {ticker}
-Price: ${t.get('price',0):.2f} ({t.get('day_change_pct',0):+.1f}% today)
-RSI-14: {t.get('rsi_14',0):.0f} | IV Rank: {t.get('iv_rank',0):.0f}/100 | Trend: {t.get('trend','')}
-vs 200 SMA: {t.get('pct_from_200_sma',0):+.1f}% | vs 50 SMA: {t.get('pct_from_50_sma',0):+.1f}%
-Off 52w High: {t.get('pct_off_52w_high',0):.1f}% | 6w Return: {t.get('return_6w_pct',0):+.1f}% | 6w Max DD: {t.get('max_dd_6w_pct',0):.1f}%
-P/E: {t.get('trailing_pe','N/A')} (fwd {t.get('forward_pe','N/A')}) | Beta: {t.get('beta','N/A')}
-Analyst Target: ${t.get('target_price','N/A')} ({t.get('upside_to_target_pct','N/A')}% upside) | Rec: {t.get('recommendation','N/A')}
-Risk/Reward: {t.get('risk_reward','N/A')} | Signal: {t.get('entry_action','')}
-Reason: {t.get('entry_reason','')}
-CSP: Strike ${t.get('csp_strike',0)} | Prem ${t.get('csp_premium',0)} | Delta {t.get('csp_delta',0)} | Ann ROC {t.get('csp_ann_roc_pct',0)}% | Capital ${t.get('csp_capital_required',0):,.0f}
-If Assigned: Basis ${t.get('cost_basis_if_assigned',0)} | CC ${t.get('cc_strike',0)} @ ${t.get('cc_premium',0)}""")
+Price: ${_n(t.get('price')):.2f} ({_n(t.get('day_change_pct')):+.1f}% today)
+RSI-14: {_n(t.get('rsi_14')):.0f} | IV Rank: {_n(t.get('iv_rank')):.0f}/100 | Trend: {_s(t.get('trend'))}
+vs 200 SMA: {_n(t.get('pct_from_200_sma')):+.1f}% | vs 50 SMA: {_n(t.get('pct_from_50_sma')):+.1f}%
+Off 52w High: {_n(t.get('pct_off_52w_high')):.1f}% | 6w Return: {_n(t.get('return_6w_pct')):+.1f}% | 6w Max DD: {_n(t.get('max_dd_6w_pct')):.1f}%
+P/E: {_s(t.get('trailing_pe'))} (fwd {_s(t.get('forward_pe'))}) | Beta: {_s(t.get('beta'))}
+Analyst Target: ${_s(t.get('target_price'))} ({_s(t.get('upside_to_target_pct'))}% upside) | Rec: {_s(t.get('recommendation'))}
+Risk/Reward: {_s(t.get('risk_reward'))} | Signal: {_s(t.get('entry_action'))}
+Reason: {_s(t.get('entry_reason'),'none')}
+CSP: Strike ${_n(t.get('csp_strike')):.2f} | Prem ${_n(t.get('csp_premium')):.2f} | Delta {_n(t.get('csp_delta')):.3f} | Ann ROC {_n(t.get('csp_ann_roc_pct')):.1f}% | Capital ${_n(t.get('csp_capital_required')):,.0f}
+If Assigned: Basis ${_n(t.get('cost_basis_if_assigned')):.2f} | CC ${_n(t.get('cc_strike')):.2f} @ ${_n(t.get('cc_premium')):.2f}""")
 
     # Add summary of ALL tickers so Gemini can compare
     if all_tickers:
@@ -1126,16 +1139,8 @@ If Assigned: Basis ${t.get('cost_basis_if_assigned',0)} | CC ${t.get('cc_strike'
             return "No scan data available. Ask user to run a scan."
         tickers = [t for t in scan.get("tickers", []) if "error" not in t]
         lines = []
-        for t in sorted(tickers, key=lambda x: x.get("csp_ann_roc_pct", 0), reverse=True):
-            lines.append(
-                f"{t.get('ticker','?'):>5} ${t.get('price',0):>8.2f} "
-                f"RSI:{t.get('rsi_14',0):>3.0f} IVR:{t.get('iv_rank',0):>3.0f} "
-                f"P/E:{str(t.get('trailing_pe','N/A')):>5} "
-                f"vs200:{t.get('pct_from_200_sma',0):>+5.1f}% "
-                f"ROC:{t.get('csp_ann_roc_pct',0):>5.1f}% "
-                f"R/R:{t.get('risk_reward','?')} "
-                f"-> {t.get('entry_action','?')}"
-            )
+        for t in sorted(tickers, key=lambda x: _n(x.get("csp_ann_roc_pct")), reverse=True):
+            lines.append(_fmt(t))
         return "\n".join(lines)
 
     def get_ticker_detail(ticker: str):
@@ -1143,22 +1148,22 @@ If Assigned: Basis ${t.get('cost_basis_if_assigned',0)} | CC ${t.get('cc_strike'
         scan = _latest_scan or _load_latest_from_disk()
         if not scan:
             return "No scan data. Ask user to run a scan."
-        t = next((x for x in scan.get("tickers", []) if x.get("ticker", "").upper() == ticker.upper()), None)
+        t = next((x for x in scan.get("tickers", []) if _s(x.get("ticker")).upper() == ticker.upper()), None)
         if not t:
             return f"Ticker {ticker} not found in scan."
         return (
-            f"TICKER: {t.get('ticker')} - {t.get('name','')}\n"
-            f"Price: ${t.get('price',0):.2f} ({t.get('day_change_pct',0):+.1f}% today)\n"
-            f"RSI-14: {t.get('rsi_14',0):.0f} | IV Rank: {t.get('iv_rank',0):.0f}/100 | Trend: {t.get('trend','')}\n"
-            f"vs 200 SMA: {t.get('pct_from_200_sma',0):+.1f}% | vs 50 SMA: {t.get('pct_from_50_sma',0):+.1f}%\n"
-            f"Off 52w High: {t.get('pct_off_52w_high',0):.1f}% | 6w Return: {t.get('return_6w_pct',0):+.1f}%\n"
-            f"6w Max DD: {t.get('max_dd_6w_pct',0):.1f}%\n"
-            f"P/E: {t.get('trailing_pe','N/A')} (fwd {t.get('forward_pe','N/A')}) | Beta: {t.get('beta','N/A')}\n"
-            f"Analyst Target: ${t.get('target_price','N/A')} ({t.get('upside_to_target_pct','N/A')}% upside)\n"
-            f"Risk/Reward: {t.get('risk_reward','N/A')} | Signal: {t.get('entry_action','')}\n"
-            f"Reason: {t.get('entry_reason','')}\n"
-            f"CSP: Strike ${t.get('csp_strike',0)} | Prem ${t.get('csp_premium',0)} | "
-            f"Delta {t.get('csp_delta',0)} | Ann ROC {t.get('csp_ann_roc_pct',0)}%\n"
+            f"TICKER: {_s(t.get('ticker'))} - {_s(t.get('name'))}\n"
+            f"Price: ${_n(t.get('price')):.2f} ({_n(t.get('day_change_pct')):+.1f}% today)\n"
+            f"RSI-14: {_n(t.get('rsi_14')):.0f} | IV Rank: {_n(t.get('iv_rank')):.0f}/100 | Trend: {_s(t.get('trend'))}\n"
+            f"vs 200 SMA: {_n(t.get('pct_from_200_sma')):+.1f}% | vs 50 SMA: {_n(t.get('pct_from_50_sma')):+.1f}%\n"
+            f"Off 52w High: {_n(t.get('pct_off_52w_high')):.1f}% | 6w Return: {_n(t.get('return_6w_pct')):+.1f}%\n"
+            f"6w Max DD: {_n(t.get('max_dd_6w_pct')):.1f}%\n"
+            f"P/E: {_s(t.get('trailing_pe'))} (fwd {_s(t.get('forward_pe'))}) | Beta: {_s(t.get('beta'))}\n"
+            f"Analyst Target: ${_s(t.get('target_price'))} ({_s(t.get('upside_to_target_pct'))}% upside)\n"
+            f"Risk/Reward: {_s(t.get('risk_reward'))} | Signal: {_s(t.get('entry_action'))}\n"
+            f"Reason: {_s(t.get('entry_reason'),'none')}\n"
+            f"CSP: Strike ${_n(t.get('csp_strike')):.2f} | Prem ${_n(t.get('csp_premium')):.2f} | "
+            f"Delta {_n(t.get('csp_delta')):.3f} | Ann ROC {_n(t.get('csp_ann_roc_pct')):.1f}%\n"
             f"Capital: ${t.get('csp_capital_required',0):,.0f}\n"
             f"If Assigned: Basis ${t.get('cost_basis_if_assigned',0)} | "
             f"CC ${t.get('cc_strike',0)} @ ${t.get('cc_premium',0)}"
@@ -1175,9 +1180,9 @@ If Assigned: Basis ${t.get('cost_basis_if_assigned',0)} | CC ${t.get('cc_strike'
             sec = t.get("sector", "Other")
             if sec not in sectors:
                 sectors[sec] = {"ivr": [], "rsi": [], "actions": []}
-            sectors[sec]["ivr"].append(t.get("iv_rank", 0))
-            sectors[sec]["rsi"].append(t.get("rsi_14", 50))
-            sectors[sec]["actions"].append(t.get("entry_action", ""))
+            sectors[sec]["ivr"].append(_n(t.get("iv_rank")))
+            sectors[sec]["rsi"].append(_n(t.get("rsi_14"), 50))
+            sectors[sec]["actions"].append(_s(t.get("entry_action")))
         lines = []
         for sec in sorted(sectors, key=lambda s: sum(sectors[s]["ivr"])/len(sectors[s]["ivr"]), reverse=True):
             s = sectors[sec]
@@ -1196,18 +1201,11 @@ If Assigned: Basis ${t.get('cost_basis_if_assigned',0)} | CC ${t.get('cc_strike'
             return "No scan data."
         tickers = [t for t in scan.get("tickers", []) if "error" not in t
                    and t.get("entry_action") == "SELL_PUT"
-                   and (t.get("csp_capital_required", 0) or 0) <= max_capital]
-        ranked = sorted(tickers, key=lambda x: x.get("csp_ann_roc_pct", 0), reverse=True)[:15]
+                   and _n(t.get("csp_capital_required")) <= max_capital]
+        ranked = sorted(tickers, key=lambda x: _n(x.get("csp_ann_roc_pct")), reverse=True)[:15]
         lines = [f"TOP {len(ranked)} SELL PUT OPPORTUNITIES (max ${max_capital:,} capital):"]
         for t in ranked:
-            lines.append(
-                f"{t['ticker']:>5} Strike ${t.get('csp_strike',0):>7.2f} "
-                f"Prem ${t.get('csp_premium',0):>5.2f} "
-                f"ROC {t.get('csp_ann_roc_pct',0):>5.1f}% "
-                f"RSI:{t.get('rsi_14',0):>3.0f} IVR:{t.get('iv_rank',0):>3.0f} "
-                f"R/R:{t.get('risk_reward','?')} "
-                f"Capital ${t.get('csp_capital_required',0):>7,.0f}"
-            )
+            lines.append(_fmt(t))
         return "\n".join(lines)
 
     def get_best_buys():
@@ -1217,16 +1215,10 @@ If Assigned: Basis ${t.get('cost_basis_if_assigned',0)} | CC ${t.get('cc_strike'
             return "No scan data."
         tickers = [t for t in scan.get("tickers", []) if "error" not in t
                    and t.get("entry_action") == "BUY_STOCK"]
-        ranked = sorted(tickers, key=lambda x: x.get("rsi_14", 50))[:10]
+        ranked = sorted(tickers, key=lambda x: _n(x.get("rsi_14"), 50))[:10]
         lines = ["TOP BUY STOCK / ACCUMULATE:"]
         for t in ranked:
-            lines.append(
-                f"{t['ticker']:>5} ${t.get('price',0):>8.2f} "
-                f"RSI:{t.get('rsi_14',0):>3.0f} IVR:{t.get('iv_rank',0):>3.0f} "
-                f"P/E:{str(t.get('trailing_pe','N/A')):>5} "
-                f"vs200:{t.get('pct_from_200_sma',0):>+5.1f}% "
-                f"off52w:{t.get('pct_off_52w_high',0):>5.1f}%"
-            )
+            lines.append(_fmt(t))
         return "\n".join(lines)
 
     tools = [get_scan_summary, get_ticker_detail, get_sector_heatmap,
