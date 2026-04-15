@@ -1240,7 +1240,7 @@ If Assigned: Basis ${t.get('cost_basis_if_assigned',0)} | CC ${t.get('cc_strike'
     ))
 
     try:
-        # Agent loop: let Gemini call tools up to 3 times
+        # First try with function calling (agent mode)
         config = genai.types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
             temperature=0.5,
@@ -1255,10 +1255,9 @@ If Assigned: Basis ${t.get('cost_basis_if_assigned',0)} | CC ${t.get('cc_strike'
         )
 
         # Handle function calls in a loop
-        for _ in range(3):  # max 3 tool calls
-            if not response.function_calls:
+        for _ in range(3):
+            if not hasattr(response, 'function_calls') or not response.function_calls:
                 break
-            # Execute each function call
             func_responses = []
             for fc in response.function_calls:
                 fn = {f.__name__: f for f in tools}.get(fc.name)
@@ -1266,14 +1265,13 @@ If Assigned: Basis ${t.get('cost_basis_if_assigned',0)} | CC ${t.get('cc_strike'
                     try:
                         result = fn(**fc.args) if fc.args else fn()
                     except Exception as e:
-                        result = f"Error: {e}"
+                        result = f"Error calling {fc.name}: {e}"
                 else:
                     result = f"Unknown function: {fc.name}"
                 func_responses.append(genai.types.Part.from_function_response(
                     name=fc.name, response={"result": result}
                 ))
 
-            # Send function results back
             contents.append(response.candidates[0].content)
             contents.append(genai.types.Content(
                 role="user",
@@ -1286,8 +1284,25 @@ If Assigned: Basis ${t.get('cost_basis_if_assigned',0)} | CC ${t.get('cc_strike'
             )
 
         reply = response.text or "No response from Gemini."
+
     except Exception as e:
-        reply = f"Gemini error: {str(e)}"
+        # Fallback: try without tools if function calling fails
+        import traceback
+        traceback.print_exc()
+        try:
+            config_simple = genai.types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.5,
+                max_output_tokens=2048,
+            )
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=contents,
+                config=config_simple,
+            )
+            reply = response.text or "No response."
+        except Exception as e2:
+            reply = f"Gemini error: {str(e2)}"
 
     return JSONResponse({"reply": reply})
 
