@@ -1,6 +1,6 @@
 # Wheel Strategy Terminal
 
-A live options income dashboard that scans 80+ tickers for wheel strategy opportunities: when to sell puts, buy stock, roll positions, or sell covered calls.
+A Bloomberg-style live options income dashboard that scans 80+ tickers for wheel strategy opportunities: when to sell puts, buy stock, roll positions, or sell covered calls.
 
 **Live demo**: [quantresearch-292122978848.us-central1.run.app](https://quantresearch-292122978848.us-central1.run.app/)
 
@@ -8,125 +8,114 @@ A live options income dashboard that scans 80+ tickers for wheel strategy opport
 
 The terminal scans the market in real-time and tells you exactly what to do with each ticker based on quantitative criteria. No guesswork.
 
-### Dashboard Views
+### Dashboard Tabs
 
 | Tab | What You See |
 |---|---|
-| **Opportunities** | All 80 tickers sorted by IV rank, RSI, P/E with buy/sell signals |
+| **Opportunities** | All 80+ tickers sorted by IV rank, RSI, P/E with buy/sell signals |
 | **Sell Puts** | Only tickers where selling a cash-secured put is the best move |
 | **Accumulate** | Tickers to buy outright (IV too low for premiums to matter) |
 | **Stand Aside** | Overbought, falling knives, or earnings risk - don't touch |
-| **Basket** | Portfolio builder with pie charts, income estimates, 5Y backtest |
+| **Basket** | Portfolio builder with pie charts, income estimates, 5Y backtest, risk slider |
+| **Heatmap** | Sector-level heat map: oversold/overbought, click to drill into tickers |
 | **Playbook** | Complete decision rules for every phase of the wheel |
 
-### What To Look For In Each Ticker
+### Ticker Detail (click any ticker)
 
-When you click a ticker, the dashboard shows:
+Four sub-tabs on the right panel:
 
-**Chart (top right)**
+| Sub-Tab | Content |
+|---|---|
+| **Signal** | Entry action, valuation (P/E, PEG, P/B), technicals (RSI, SMA, 52w), CSP/CC setup |
+| **Chart** | TradingView-style candlesticks, 20/50 EMA, 200 SMA, RSI-14, earnings markers, volume profile, buy/sell signal overlays. Timeframes: 1D/5D/1M/3M/6M/1Y/2Y/5Y |
+| **Options** | Full option chain with delta, bid/ask/last, IV, OI. Auto-recommends best expiry (30-45 DTE) and optimal strikes (0.20-0.30 delta). Earnings flag on expirations |
+| **Fundamentals** | Company profile, profitability (margins, ROE, ROA), balance sheet (cash, debt, FCF), dividends, growth rates, analyst targets, recent news |
+
+### Chart Features
+
 - Candlestick chart with 20 EMA (yellow), 50 EMA (blue), 200 SMA (purple dashed)
 - RSI-14 sub-chart with overbought (70) and oversold (30) lines
-- Volume bars
-- **Signal markers on the chart:**
-  - Green arrow up = **SELL PUT** (RSI crossed below 30, above 200 SMA, IV rank > 30)
-  - Blue arrow up = **BUY STOCK** (RSI oversold below 25, above 200 SMA)
-  - Purple circle = **200 SMA support touch** (accumulation zone)
-  - Yellow arrow down = **OVERBOUGHT** (RSI crossed above 70 - don't chase)
-  - Red arrow down = **SELL CALL** (RSI > 75 - sell covered call aggressively)
+- Toggle overlays: **Vol Profile** (TradingView-style horizontal buy/sell bars with POC), **Earnings** (historical + upcoming), **SMA Signals**
+- Signal markers on chart:
+  - Green arrow = SELL PUT (RSI < 30, above 200 SMA, IV rich)
+  - Blue arrow = BUY STOCK (RSI oversold)
+  - Purple circle = 200 SMA support touch
+  - Yellow arrow = OVERBOUGHT (RSI > 70)
+  - Red arrow = SELL CALL (RSI > 75)
+  - Orange square = EARNINGS (with date + EPS estimate/actual)
+- 8 timeframes from 15-minute intraday to 5-year daily
 
-**Detail panel (below chart)**
-- Signal, delta, risk/reward rating, reasoning
-- Valuation: P/E, forward P/E, PEG, Price/Book, EV/EBITDA
-- Technicals: RSI, vs 50/200 SMA, 52-week position, 6-week return
-- CSP setup: strike, premium, delta, annualized ROC, capital required
-- If assigned: cost basis, covered call strike/premium/delta
+### Portfolio Basket Builder
 
-**Option chain (below detail)**
-- All strikes with delta, bid/ask/last, IV%, volume, open interest
-- ATM row highlighted, auto-scrolls to center
-- Expiry selector, puts/calls/both toggle
+- Preset sizes: $25K, $50K, $100K, $300K, $1M
+- Risk tolerance slider (5-40% max drawdown)
+- Composite scoring: yield + value + momentum + risk
+- Concentration limits: 20% per ticker, 35% per sector, 25% cash buffer
+- Pie charts for ticker and sector allocation
+- Annual income estimate (dividends + option premiums)
+- 5-year portfolio backtest with equity curve, drawdown chart, Sharpe ratio, vs SPY benchmark
+- Year-by-year return breakdown
 
-**Fundamentals (bottom)**
-- Company profile, sector, industry
-- Profitability: margins, ROE, ROA, growth rates
-- Balance sheet: cash, debt, FCF
-- Dividends: yield, payout ratio
-- Recent news headlines with links
+### Gemini AI Assistant
 
-## The Playbook: When To Do What
+- Slide-out chat panel (AI button, bottom-right)
+- Powered by Gemini 2.5 Flash with function-calling (agentic, not RAG)
+- 5 tools Gemini can call interactively:
+  - `get_scan_summary()` - all tickers ranked by ROC
+  - `get_ticker_detail(ticker)` - deep dive on any ticker
+  - `get_sector_heatmap()` - sector-level analysis
+  - `get_best_puts(max_capital)` - top put opportunities
+  - `get_best_buys()` - best accumulation candidates
+- Full wheel playbook in system prompt
+- Ticker context auto-loaded when you click a ticker
 
-### Phase 1: Entry (No Position)
+## The Playbook
+
+### Phase 1: Entry
 
 ```
 IV Rank >= 50  -->  SELL PUT at 0.20 delta, 30-45 DTE
 IV Rank 30-50  -->  SELL PUT at 0.25 delta, 30-45 DTE
-IV Rank < 20   -->  BUY STOCK outright (premium not worth it)
+IV Rank < 20   -->  BUY STOCK outright
 ```
 
-**Sell put when:**
-- IV Rank >= 30 (premium is at least average)
-- RSI < 50 (not overbought)
-- Above 200-day SMA (uptrend intact)
-- No earnings within DTE window
-- P/E not stretched above 40 with RSI > 70
+Additional smart filters:
+- RSI > 70 + P/E > 40 = STAND ASIDE (overbought + expensive)
+- RSI < 30 + above 200 SMA = prime accumulation (BUY or aggressive PUT)
+- 10-25% off 52-week high = pullback sweet spot
+- \>10% below 200 SMA = falling knife, STAND ASIDE
+- Earnings inside DTE = STAND ASIDE
 
-**Buy stock outright when:**
-- IV Rank < 20 (premium too thin for CSP)
-- RSI < 30 + cheap P/E + above 200 SMA (prime accumulation dip)
-- 10-25% pullback from 52-week high (pullback sweet spot)
-- Strong breakout with low IV (don't miss the move)
-- Ex-dividend before CSP expiry
-
-**Stand aside when:**
-- RSI > 70 AND P/E > 40 (overbought + expensive)
-- Price > 10% below 200 SMA (falling knife)
-- Below 200 SMA + IV Rank > 80 (crisis)
-- Earnings inside the DTE window
-
-### Phase 2: Manage Open Put
+### Phase 2: Put Management
 
 ```
-50% profit      -->  CLOSE, re-sell new 30-45 DTE
-OTM, > 21 DTE   -->  HOLD (theta working)
-OTM, <= 21 DTE   -->  Roll same strike +30d or close if >30% profit
-
-ITM < 3%        -->  ROLL SAME STRIKE +30 days (must be for credit)
-ITM 3-8%        -->  ROLL DOWN 1-2 strikes +45 days (must be for credit)
-ITM > 8%        -->  ACCEPT ASSIGNMENT (rolling is too expensive)
+50% profit      -->  CLOSE, re-sell 30-45 DTE
+ITM < 3%        -->  ROLL SAME STRIKE +30d (credit only)
+ITM 3-8%        -->  ROLL DOWN 1-2 strikes +45d (credit only)
+ITM > 8%        -->  ACCEPT ASSIGNMENT
 ```
+**Never roll for a debit.**
 
-**Never roll for a debit.** If you can't get a credit, take the shares.
-
-### Phase 3: After Assignment (Sell Covered Call)
+### Phase 3: Covered Call After Assignment
 
 ```
-Stock > 5% above cost basis   -->  0.30-0.40 delta CC (get called away)
-Stock near cost basis (+/-2%)  -->  0.25 delta CC (standard income)
-Stock 2-10% below basis       -->  0.15-0.20 delta CC (patient)
-Stock > 10% below basis       -->  0.10-0.15 delta CC (wait for recovery)
+Stock > 5% above cost basis  -->  0.30-0.40 delta (get called away)
+Stock near cost basis        -->  0.25 delta (standard)
+Stock 2-10% below basis      -->  0.15-0.20 delta (patient)
+Stock > 10% below basis      -->  0.10-0.15 delta (wait)
+```
+**Never sell a call below adjusted cost basis.**
+
+### Phase 4: Call Management
+
+```
+50% profit                   -->  Close, re-sell
+ITM <= 7 DTE, above basis   -->  LET CALL AWAY (cycle complete)
+ITM <= 7 DTE, below basis   -->  Roll up and out
+Stock fell > 8%              -->  Roll call down (above basis)
 ```
 
-**Never sell a call below your adjusted cost basis** (strike - total premium collected).
-
-### Phase 4: Manage Open Call
-
-```
-50% profit                    -->  Close, re-sell
-ITM, <= 7 DTE, above basis   -->  LET IT GET CALLED AWAY (cycle complete!)
-ITM, <= 7 DTE, below basis   -->  Roll up and out
-Stock fell > 8% below strike  -->  Roll call down (never below cost basis)
-```
-
-Called away = cycle complete. Back to selling puts.
-
-### Risk Limits
-
-- Max 20% of account in any single ticker
-- Max 35% in any single sector
-- Keep 25% cash buffer for assignments
-- DTE sweet spot: 30-45 days
-
-## Ticker Universe (80 tickers)
+## Ticker Universe (80+ tickers, 7 groups)
 
 | Group | Tickers |
 |---|---|
@@ -143,14 +132,15 @@ Called away = cycle complete. Back to selling puts.
 ```
 option_strategies/
   dashboard/
-    app.py              FastAPI backend (7 API endpoints)
-    daily_scanner.py    Live scanner engine (fetches prices, computes signals)
+    app.py              FastAPI backend (10 API endpoints)
+    daily_scanner.py    Live scanner engine
+    gemini_prompt.py    AI system prompt with full playbook
     templates/
       index.html        Single-page dashboard UI
     static/
       style.css         Dark terminal theme
   wheel_criteria.py     Ticker universe + entry evaluation
-  wheel_decision_engine.py  Full lifecycle rules (entry/roll/assignment/CC)
+  wheel_decision_engine.py  Full lifecycle rules
   option_pricing.py     Black-Scholes pricing
   Dockerfile            Container definition
   service.yaml          Cloud Run manifest
@@ -161,14 +151,17 @@ option_strategies/
 
 | Endpoint | Description |
 |---|---|
-| `GET /api/scan` | Run live scan on all tickers (fetches real-time data) |
+| `GET /api/scan` | Run live scan on all tickers |
 | `GET /api/latest` | Return cached last scan |
-| `GET /api/chart/{ticker}?tf=1Y` | OHLCV + indicators + signals (1D/5D/1M/3M/6M/1Y/2Y/5Y) |
-| `GET /api/options/{ticker}?expiry=YYYY-MM-DD` | Option chain with delta |
+| `GET /api/chart/{ticker}?tf=1Y` | OHLCV + indicators + signals + earnings + volume profile |
+| `GET /api/options/{ticker}?expiry=...` | Option chain with delta + recommended strikes |
 | `GET /api/fundamentals/{ticker}` | Company profile, financials, news |
 | `GET /api/basket?size=50000&max_dd=20` | Optimized portfolio basket |
-| `GET /api/basket/backtest?size=50000&max_dd=20` | 5-year portfolio backtest |
+| `GET /api/basket/backtest?size=50000` | 5-year portfolio backtest |
+| `GET /api/heatmap` | Sector-level heat map |
 | `GET /api/playbook` | Decision rules as JSON |
+| `POST /api/chat` | Gemini AI chat with function calling |
+| `POST /api/login` | Password authentication |
 
 ## Run Locally
 
@@ -176,15 +169,16 @@ option_strategies/
 cd option_strategies
 pip install -r requirements.txt
 uvicorn dashboard.app:app --port 8080
-# Open http://localhost:8080
 ```
 
 Or with Docker:
-
 ```bash
 cd option_strategies
 docker build -t wheel-dashboard .
-docker run -p 8080:8080 wheel-dashboard
+docker run -p 8080:8080 \
+  -e DASHBOARD_PASSWORD=rockit \
+  -e GEMINI_API_KEY=your-key \
+  wheel-dashboard
 ```
 
 ## Deploy to GCP Cloud Run
@@ -194,13 +188,55 @@ cd option_strategies
 gcloud run deploy wheel-dashboard \
   --source=. \
   --region=us-central1 \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --set-env-vars="DASHBOARD_PASSWORD=rockit,GEMINI_API_KEY=your-key"
 ```
+
+## Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `DASHBOARD_PASSWORD` | `rockit` | Login password |
+| `GEMINI_API_KEY` | (none) | Google Gemini API key for AI chat |
+| `PORT` | `8080` | Server port |
+
+## Roadmap
+
+### Completed
+- [x] Decision engine (entry, put mgmt, CC, call mgmt)
+- [x] Live scanner with 80+ tickers, RSI, IVR, P/E, trend
+- [x] Bloomberg-style dashboard with sortable/filterable table
+- [x] TradingView charts with EMAs, RSI, volume, 8 timeframes
+- [x] Chart signals (buy/sell/support/overbought overlays)
+- [x] Earnings markers (historical + upcoming with EPS)
+- [x] Volume profile (TradingView-style horizontal buy/sell bars)
+- [x] Option chain with delta, recommended strikes, earnings flags
+- [x] Company fundamentals + news
+- [x] Portfolio basket builder with risk slider and 5Y backtest
+- [x] Sector heatmap
+- [x] Gemini AI chat with function calling (agentic)
+- [x] Password protection
+- [x] Docker + Cloud Run deployment
+
+### Next Up
+- [ ] Earnings calendar integration (auto-skip earnings in signals)
+- [ ] Real IV rank from option chain (replace HV proxy)
+- [ ] Position tracker (track open puts, assigned shares, active CCs)
+- [ ] Roll advisor with live chain ("roll to X strike for $Y credit")
+- [ ] Alerts / notifications (Slack/email on entry signals)
+- [ ] Scheduled auto-scan (Cloud Scheduler cron)
+- [ ] P&L tracking (log trades, cumulative premium income)
+- [ ] MCP server (expose tools for any AI agent)
+- [ ] Broker integration (IBKR API for positions + execution)
+- [ ] Correlation matrix (portfolio clustering detection)
+- [ ] Greeks dashboard (portfolio-level delta, theta, vega)
+- [ ] Dynamic ticker discovery (screen full market, not just curated list)
 
 ## Data Sources
 
 - **Price data**: Yahoo Finance via yfinance (real-time during market hours)
-- **Option chains**: Yahoo Finance (bid/ask live during market hours, last price after hours)
+- **Option chains**: Yahoo Finance (bid/ask live during hours, last price after hours)
 - **Fundamentals**: Yahoo Finance (P/E, margins, balance sheet, news)
-- **IV Rank**: Computed as realized volatility rank over 180 trading days (proxy for true IV rank)
+- **Earnings**: Yahoo Finance (historical + upcoming dates with EPS)
+- **IV Rank**: Realized volatility rank over 180 trading days (proxy)
 - **Signals**: RSI-14 crossovers, 200 SMA support, IV rank thresholds
