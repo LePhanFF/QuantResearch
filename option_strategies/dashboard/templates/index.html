@@ -10,6 +10,16 @@
 </head>
 <body>
 
+<!-- Login screen -->
+<div id="login-screen" class="login-screen">
+    <div class="login-box">
+        <h1 style="color:var(--green);font-size:18px;margin-bottom:16px">WHEEL TERMINAL</h1>
+        <input type="password" id="login-pw" class="login-input" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="btn" onclick="doLogin()" style="width:100%;margin-top:8px">Enter</button>
+        <div id="login-error" style="color:var(--red);font-size:11px;margin-top:8px"></div>
+    </div>
+</div>
+
 <!-- Top bar -->
 <div class="header">
     <div class="header-left">
@@ -347,7 +357,34 @@ function setGroup(g) {
     render();
 }
 
-window.addEventListener('DOMContentLoaded', () => loadLatest());
+window.addEventListener('DOMContentLoaded', () => {
+    if (sessionStorage.getItem('authed')) {
+        document.getElementById('login-screen').style.display = 'none';
+        loadLatest();
+    } else {
+        document.getElementById('login-pw').focus();
+    }
+});
+
+async function doLogin() {
+    const pw = document.getElementById('login-pw').value;
+    try {
+        const r = await fetch('/api/login', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({password: pw}),
+        });
+        const d = await r.json();
+        if (d.ok) {
+            sessionStorage.setItem('authed', '1');
+            document.getElementById('login-screen').style.display = 'none';
+            loadLatest();
+        } else {
+            document.getElementById('login-error').textContent = 'Wrong password';
+        }
+    } catch(e) {
+        document.getElementById('login-error').textContent = 'Connection error';
+    }
+}
 
 async function loadLatest() {
     try {

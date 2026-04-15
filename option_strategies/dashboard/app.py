@@ -42,6 +42,17 @@ _latest_scan: dict | None = None
 
 import os
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "rockit")
+
+
+# ── Auth ─────────────────────────────────────────────────────────
+
+@app.post("/api/login")
+async def api_login(request: Request):
+    body = await request.json()
+    if body.get("password") == DASHBOARD_PASSWORD:
+        return JSONResponse({"ok": True})
+    return JSONResponse({"ok": False, "error": "Wrong password"}, status_code=401)
 
 
 # ── API ──────────────────────────────────────────────────────────

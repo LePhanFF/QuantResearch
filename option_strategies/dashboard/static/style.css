@@ -315,6 +315,21 @@ body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); 
 .hmt-buy { background:var(--blue-bg); color:var(--blue); }
 .hmt-aside { background:var(--yellow-bg); color:var(--yellow); }
 
+/* Login */
+.login-screen {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:999;
+}
+.login-box {
+    background:var(--surface); border:1px solid var(--border); border-radius:8px;
+    padding:32px; width:300px; text-align:center;
+}
+.login-input {
+    width:100%; background:var(--surface2); border:1px solid var(--border); color:var(--text);
+    padding:10px 14px; border-radius:6px; font-size:14px; text-align:center; outline:none;
+}
+.login-input:focus { border-color:var(--blue); }
+
 /* Spinner */
 .spinner { width:16px; height:16px; border:2px solid var(--border); border-top:2px solid var(--blue); border-radius:50%; animation:spin .6s linear infinite; margin:0 auto 8px; }
 @keyframes spin { to { transform:rotate(360deg); } }
