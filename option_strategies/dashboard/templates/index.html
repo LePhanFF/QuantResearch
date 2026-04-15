@@ -114,7 +114,11 @@
                 <button class="tf-btn" onclick="changeTF('2Y')">2Y</button>
                 <button class="tf-btn" onclick="changeTF('5Y')">5Y</button>
             </div>
-            <label class="vp-toggle"><input type="checkbox" id="vp-toggle" onchange="toggleVolProfile()"> Vol Profile</label>
+            <div class="chart-toggles">
+                <label class="vp-toggle"><input type="checkbox" id="vp-toggle" onchange="toggleVolProfile()"> Vol Profile</label>
+                <label class="vp-toggle"><input type="checkbox" id="earn-toggle" checked onchange="toggleEarnings()"> Earnings</label>
+                <label class="vp-toggle"><input type="checkbox" id="sma-sig-toggle" checked onchange="toggleSmaSig()"> SMA Signals</label>
+            </div>
             </div>
             <div id="chart-container" class="chart-container"></div>
             <div id="rsi-container" class="rsi-container"></div>
@@ -633,27 +637,22 @@ function renderChart(data) {
     const sma200 = mainChart.addLineSeries({color:'#a855f7',lineWidth:2,priceScaleId:'right',lineStyle:2});
     sma200.setData(data.sma200);
 
-    // Combine trade signals + earnings markers
-    let markers = [];
-    if (data.signals) markers = markers.concat(data.signals.map(s => ({
-        time: s.time, position: s.position, color: s.color, shape: s.shape, text: s.text,
-    })));
-    if (data.earnings) {
-        for (const e of data.earnings) {
-            const label = e.upcoming ? `EARNINGS ${e.time} (est $${e.eps_estimate||'?'})` :
-                `EARNINGS $${e.eps_actual||'?'} ${e.surprise_pct!=null?(e.surprise_pct>0?'+':'')+e.surprise_pct+'%':''}`;
-            markers.push({
-                time: e.time, position: 'aboveBar',
-                color: e.upcoming ? '#f97316' : (e.surprise_pct > 0 ? '#22c55e' : '#ef4444'),
-                shape: 'square', text: label,
-            });
-        }
-    }
-    // Sort markers by time (required by lightweight-charts)
-    markers.sort((a,b) => a.time < b.time ? -1 : a.time > b.time ? 1 : 0);
-    if (markers.length > 0) candle.setMarkers(markers);
-
-    _lastChartData = data;  // store for volume profile
+    // Store markers by type for toggling
+    _chartSignals = (data.signals || []).map(s => ({
+        time: s.time, position: s.position, color: s.color, shape: s.shape,
+        text: s.text, _type: s.text.includes('200 SMA') ? 'sma' : 'trade',
+    }));
+    _chartEarnings = (data.earnings || []).map(e => ({
+        time: e.time, position: 'aboveBar',
+        color: e.upcoming ? '#f97316' : (e.surprise_pct > 0 ? '#22c55e' : '#ef4444'),
+        shape: 'square',
+        text: e.upcoming ? `EARNINGS ${e.time} (est $${e.eps_estimate||'?'})` :
+            `EARNINGS $${e.eps_actual||'?'} ${e.surprise_pct!=null?(e.surprise_pct>0?'+':'')+e.surprise_pct+'%':''}`,
+        _type: 'earnings',
+    }));
+    _candleSeries = candle;
+    _lastChartData = data;
+    rebuildMarkers();
     mainChart.timeScale().fitContent();
 
     // RSI chart
@@ -1320,61 +1319,80 @@ function formatReply(text) {
         .replace(/\n/g, '<br>');
 }
 
-// ── Volume Profile toggle ─────────────────────────────────────
+// ── Chart toggles ─────────────────────────────────────────────
 let vpSeries = null, _lastChartData = null;
+let _chartSignals = [], _chartEarnings = [], _candleSeries = null;
+
+function rebuildMarkers() {
+    if (!_candleSeries) return;
+    const showEarn = document.getElementById('earn-toggle')?.checked ?? true;
+    const showSma = document.getElementById('sma-sig-toggle')?.checked ?? true;
+
+    let markers = [];
+    // Trade signals (split into SMA support vs others)
+    for (const s of _chartSignals) {
+        if (s._type === 'sma' && !showSma) continue;
+        if (s._type === 'trade' && !showSma) continue;  // trade signals tied to SMA toggle
+        markers.push(s);
+    }
+    if (showEarn) markers = markers.concat(_chartEarnings);
+    markers.sort((a, b) => a.time < b.time ? -1 : a.time > b.time ? 1 : 0);
+    _candleSeries.setMarkers(markers);
+}
+
+function toggleEarnings() { rebuildMarkers(); }
+function toggleSmaSig() { rebuildMarkers(); }
 
 function toggleVolProfile() {
     const on = document.getElementById('vp-toggle').checked;
     if (!_lastChartData || !mainChart) return;
-    if (on && _lastChartData.volume_profile) {
-        // Draw volume profile as horizontal histogram using line markers
-        // We'll use a second price scale on the left
-        if (vpSeries) { mainChart.removeSeries(vpSeries); vpSeries = null; }
-        const vp = _lastChartData.volume_profile;
-        const maxVol = Math.max(...vp.map(v => v.volume));
-        // Overlay as histogram on left side using baseline series
-        // Simpler: add markers at price levels
-        // Actually use horizontal lines with varying width simulated by opacity
-        vpSeries = mainChart.addHistogramSeries({
-            priceScaleId: 'vp', color: '#3b82f680',
-            priceFormat: { type: 'volume' },
+
+    // Remove old VP
+    if (Array.isArray(vpSeries)) vpSeries.forEach(s => mainChart.removeSeries(s));
+    else if (vpSeries) mainChart.removeSeries(vpSeries);
+    vpSeries = null;
+
+    if (!on || !_lastChartData.volume_profile) return;
+
+    const vp = _lastChartData.volume_profile;
+    if (vp.length === 0) return;
+    const maxVol = Math.max(...vp.map(v => v.volume));
+    const candles = _lastChartData.candles;
+    const lastTime = candles[candles.length - 1]?.time;
+    const firstTime = candles[0]?.time;
+    if (!lastTime || !firstTime) return;
+
+    // Draw horizontal bars as line series with varying opacity by volume
+    vpSeries = [];
+    for (const node of vp) {
+        if (node.volume < maxVol * 0.05) continue;  // skip tiny bars
+        const intensity = Math.min(node.volume / maxVol, 1);
+        const alpha = Math.floor(40 + intensity * 80).toString(16).padStart(2, '0');
+        const width = Math.max(1, Math.round(intensity * 4));
+
+        const ls = mainChart.addLineSeries({
+            color: `#3b82f6${alpha}`,
+            lineWidth: width,
+            lineStyle: 0,
+            priceScaleId: 'right',
+            lastValueVisible: false,
+            priceLineVisible: false,
+            crosshairMarkerVisible: false,
         });
-        mainChart.priceScale('vp').applyOptions({
-            scaleMargins: { top: 0, bottom: 0 },
-            visible: false,
-        });
-        // Convert to time-series: show volume at each price as last bar
-        const lastTime = _lastChartData.candles[_lastChartData.candles.length-1]?.time;
-        if (lastTime) {
-            // Can't easily do horizontal bars in lightweight-charts
-            // Instead show price level lines for high-volume nodes
-            if (vpSeries) { mainChart.removeSeries(vpSeries); vpSeries = null; }
-            const top3 = [...vp].sort((a,b) => b.volume - a.volume).slice(0, 5);
-            vpSeries = [];
-            for (const node of top3) {
-                const ls = mainChart.addLineSeries({
-                    color: '#3b82f650', lineWidth: 2, lineStyle: 0,
-                    priceScaleId: 'right', lastValueVisible: false,
-                    priceLineVisible: false,
-                });
-                const first = _lastChartData.candles[0]?.time;
-                ls.setData([{time: first, value: node.price}, {time: lastTime, value: node.price}]);
-                // Add price line
-                ls.createPriceLine({
-                    price: node.price, color: '#3b82f680', lineWidth: 1, lineStyle: 2,
-                    axisLabelVisible: true,
-                    title: `VP ${(node.volume/1e6).toFixed(0)}M`,
-                });
-                vpSeries.push(ls);
-            }
+        ls.setData([{time: firstTime, value: node.price}, {time: lastTime, value: node.price}]);
+
+        // Label for high-volume nodes
+        if (intensity > 0.5) {
+            ls.createPriceLine({
+                price: node.price,
+                color: `#3b82f6${alpha}`,
+                lineWidth: 0,
+                lineStyle: 2,
+                axisLabelVisible: true,
+                title: `${(node.volume / 1e6).toFixed(0)}M`,
+            });
         }
-    } else {
-        if (Array.isArray(vpSeries)) {
-            vpSeries.forEach(s => mainChart.removeSeries(s));
-        } else if (vpSeries) {
-            mainChart.removeSeries(vpSeries);
-        }
-        vpSeries = null;
+        vpSeries.push(ls);
     }
 }
 
