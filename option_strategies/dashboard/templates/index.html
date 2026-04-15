@@ -71,12 +71,28 @@
 
     <!-- Right panel: chart + detail -->
     <div class="right-panel" id="right-panel">
+        <!-- Ticker header + sub-tabs -->
         <div class="chart-header" id="chart-header">
             <div>
                 <span id="chart-ticker">Select a ticker</span>
                 <span id="chart-info" class="sub"></span>
             </div>
-            <div class="tf-buttons" id="tf-buttons">
+            <div class="right-tabs">
+                <button class="rt-tab active" onclick="switchRightTab('signal',this)">Signal</button>
+                <button class="rt-tab" onclick="switchRightTab('chart',this)">Chart</button>
+                <button class="rt-tab" onclick="switchRightTab('chain',this)">Options</button>
+                <button class="rt-tab" onclick="switchRightTab('fundamentals',this)">Fundamentals</button>
+            </div>
+        </div>
+
+        <!-- Signal tab (default) -->
+        <div id="rt-signal" class="rt-panel">
+            <div id="detail-content" class="detail-content"></div>
+        </div>
+
+        <!-- Chart tab -->
+        <div id="rt-chart" class="rt-panel" style="display:none">
+            <div class="tf-buttons" style="padding:4px 8px;border-bottom:1px solid var(--border)">
                 <button class="tf-btn" onclick="changeTF('1D')">1D</button>
                 <button class="tf-btn" onclick="changeTF('5D')">5D</button>
                 <button class="tf-btn" onclick="changeTF('1M')">1M</button>
@@ -86,12 +102,12 @@
                 <button class="tf-btn" onclick="changeTF('2Y')">2Y</button>
                 <button class="tf-btn" onclick="changeTF('5Y')">5Y</button>
             </div>
+            <div id="chart-container" class="chart-container"></div>
+            <div id="rsi-container" class="rsi-container"></div>
         </div>
-        <div id="detail-content" class="detail-content"></div>
-        <div id="chart-container" class="chart-container"></div>
-        <div id="rsi-container" class="rsi-container"></div>
-        <!-- Option Chain -->
-        <div id="option-chain" class="option-chain-panel">
+
+        <!-- Options tab -->
+        <div id="rt-chain" class="rt-panel" style="display:none">
             <div class="chain-header">
                 <h4>OPTION CHAIN</h4>
                 <div class="chain-controls">
@@ -107,8 +123,9 @@
                 <div class="empty-msg">Select a ticker to view options</div>
             </div>
         </div>
-        <!-- Fundamentals panel -->
-        <div id="fundamentals-panel" class="fundamentals-panel">
+
+        <!-- Fundamentals tab -->
+        <div id="rt-fundamentals" class="rt-panel" style="display:none">
             <div id="fundamentals-content" class="empty-msg">Select a ticker to view fundamentals</div>
         </div>
     </div>
@@ -490,11 +507,32 @@ async function selectTicker(ticker) {
     updateChatContext();
 }
 
+let _pendingChartData = null;
+
+function switchRightTab(tab, btn) {
+    document.querySelectorAll('.rt-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.rt-panel').forEach(p => p.style.display = 'none');
+    document.getElementById('rt-' + tab).style.display = 'block';
+    // If switching to chart and we have pending data, render it now
+    if (tab === 'chart' && _pendingChartData) {
+        setTimeout(() => {
+            renderChart(_pendingChartData);
+            _pendingChartData = null;
+        }, 50);
+    }
+}
+
 async function loadChart(ticker) {
     try {
         const r = await fetch(`/api/chart/${ticker}?tf=${currentTF}`);
         const data = await r.json();
-        renderChart(data);
+        const chartPanel = document.getElementById('rt-chart');
+        if (chartPanel.style.display !== 'none') {
+            renderChart(data);
+        } else {
+            _pendingChartData = data;  // render when tab opens
+        }
     } catch(e) { console.error(e); }
 }
 
@@ -516,7 +554,7 @@ function renderChart(data) {
 
     // Main chart
     mainChart = LightweightCharts.createChart(cc, {
-        width: cc.clientWidth, height: 260,
+        width: cc.clientWidth, height: Math.max(cc.clientHeight, 250),
         layout: { background: {color:'#1a1d27'}, textColor: '#8b8fa3', fontSize: 11 },
         grid: { vertLines:{color:'#2e3140'}, horzLines:{color:'#2e3140'} },
         crosshair: { mode: 0 },

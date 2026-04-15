@@ -37,7 +37,14 @@ body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); 
 /* Terminal layout */
 .terminal-layout { display:flex; height:calc(100vh - 80px); }
 .left-panel { width:680px; min-width:320px; overflow:auto; flex-shrink:0; display:flex; flex-direction:column; }
-.right-panel { flex:1; overflow-y:auto; }
+.right-panel { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
+.rt-panel { flex:1; overflow-y:auto; }
+
+/* Right panel sub-tabs */
+.right-tabs { display:flex; gap:2px; }
+.rt-tab { background:none; border:1px solid var(--border); color:var(--text-dim); padding:4px 10px; font-size:10px; font-weight:600; cursor:pointer; border-radius:3px; }
+.rt-tab.active { background:var(--blue-bg); color:var(--blue); border-color:var(--blue); }
+.rt-tab:hover { color:var(--text); }
 
 /* Draggable divider */
 .divider {
@@ -86,7 +93,7 @@ body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); 
 .tf-btn { background:none; border:1px solid var(--border); color:var(--text-dim); padding:3px 8px; font-size:10px; font-weight:600; cursor:pointer; border-radius:3px; font-family:'JetBrains Mono',monospace; }
 .tf-btn.active { background:var(--blue-bg); color:var(--blue); border-color:var(--blue); }
 .tf-btn:hover { color:var(--text); }
-.chart-container { height:260px; background:var(--surface); }
+.chart-container { height:calc(100% - 120px); min-height:250px; background:var(--surface); }
 .rsi-container { height:80px; background:var(--surface); border-top:1px solid var(--border); }
 
 /* Detail panel */
