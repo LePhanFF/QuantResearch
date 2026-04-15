@@ -1043,36 +1043,55 @@ async def api_chat(request: Request):
     ticker = body.get("ticker")
     history = body.get("history", [])
 
-    # Build context from scan data
+    # Build context — selected ticker + top opportunities from full scan
     context_parts = []
     ticker_data = body.get("ticker_data")
+    all_tickers = body.get("all_tickers")  # summary of all scanned tickers
+
     if not ticker_data:
         scan = _latest_scan or _load_latest_from_disk()
         if ticker and scan:
             ticker_data = next((x for x in scan.get("tickers", []) if x.get("ticker") == ticker), None)
 
+    def _fmt(t):
+        return (f"{t.get('ticker','?'):>5} ${t.get('price',0):>8.2f} "
+                f"RSI:{t.get('rsi_14',0):>3.0f} IVR:{t.get('iv_rank',0):>3.0f} "
+                f"P/E:{t.get('trailing_pe','N/A'):>5} "
+                f"vs200:{t.get('pct_from_200_sma',0):>+5.1f}% "
+                f"ROC:{t.get('csp_ann_roc_pct',0):>5.1f}% "
+                f"R/R:{t.get('risk_reward','?')} "
+                f"-> {t.get('entry_action','?')}")
+
     if ticker_data:
         t = ticker_data
-        context_parts.append(f"""LIVE DATA for {ticker}:
+        context_parts.append(f"""SELECTED TICKER: {ticker}
 Price: ${t.get('price',0):.2f} ({t.get('day_change_pct',0):+.1f}% today)
-RSI-14: {t.get('rsi_14',0):.0f}
-IV Rank: {t.get('iv_rank',0):.0f}/100
-Trend: {t.get('trend','')}
-vs 200 SMA: {t.get('pct_from_200_sma',0):+.1f}%
-vs 50 SMA: {t.get('pct_from_50_sma',0):+.1f}%
-Off 52w High: {t.get('pct_off_52w_high',0):.1f}%
-6w Return: {t.get('return_6w_pct',0):+.1f}% | 6w Max DD: {t.get('max_dd_6w_pct',0):.1f}%
-P/E (trailing): {t.get('trailing_pe','N/A')} | P/E (forward): {t.get('forward_pe','N/A')}
-Beta: {t.get('beta','N/A')}
-Analyst Target: ${t.get('target_price','N/A')} ({t.get('upside_to_target_pct','N/A')}% upside)
-Recommendation: {t.get('recommendation','N/A')}
-HV 30d: {t.get('hv_30d',0):.1f}%
-Risk/Reward: {t.get('risk_reward','N/A')}
-Signal: {t.get('entry_action','')}
+RSI-14: {t.get('rsi_14',0):.0f} | IV Rank: {t.get('iv_rank',0):.0f}/100 | Trend: {t.get('trend','')}
+vs 200 SMA: {t.get('pct_from_200_sma',0):+.1f}% | vs 50 SMA: {t.get('pct_from_50_sma',0):+.1f}%
+Off 52w High: {t.get('pct_off_52w_high',0):.1f}% | 6w Return: {t.get('return_6w_pct',0):+.1f}% | 6w Max DD: {t.get('max_dd_6w_pct',0):.1f}%
+P/E: {t.get('trailing_pe','N/A')} (fwd {t.get('forward_pe','N/A')}) | Beta: {t.get('beta','N/A')}
+Analyst Target: ${t.get('target_price','N/A')} ({t.get('upside_to_target_pct','N/A')}% upside) | Rec: {t.get('recommendation','N/A')}
+Risk/Reward: {t.get('risk_reward','N/A')} | Signal: {t.get('entry_action','')}
 Reason: {t.get('entry_reason','')}
-CSP Setup: Strike ${t.get('csp_strike',0)} | Premium ${t.get('csp_premium',0)} | Delta {t.get('csp_delta',0)} | Ann ROC {t.get('csp_ann_roc_pct',0)}%
-Capital Required: ${t.get('csp_capital_required',0):,.0f}
-If Assigned: Cost Basis ${t.get('cost_basis_if_assigned',0)} | CC Strike ${t.get('cc_strike',0)} | CC Premium ${t.get('cc_premium',0)}""")
+CSP: Strike ${t.get('csp_strike',0)} | Prem ${t.get('csp_premium',0)} | Delta {t.get('csp_delta',0)} | Ann ROC {t.get('csp_ann_roc_pct',0)}% | Capital ${t.get('csp_capital_required',0):,.0f}
+If Assigned: Basis ${t.get('cost_basis_if_assigned',0)} | CC ${t.get('cc_strike',0)} @ ${t.get('cc_premium',0)}""")
+
+    # Add summary of ALL tickers so Gemini can compare
+    if all_tickers:
+        sell_puts = [t for t in all_tickers if t.get('entry_action') == 'SELL_PUT' and not t.get('error')]
+        buy_stocks = [t for t in all_tickers if t.get('entry_action') == 'BUY_STOCK' and not t.get('error')]
+        # Top 10 by ROC for comparison
+        top_roc = sorted(sell_puts, key=lambda x: x.get('csp_ann_roc_pct', 0), reverse=True)[:10]
+        top_buy = sorted(buy_stocks, key=lambda x: x.get('rsi_14', 50))[:5]
+
+        lines = ["\nALL TICKERS RANKED BY CSP PREMIUM (top 10 SELL PUT):"]
+        for t in top_roc:
+            lines.append(_fmt(t))
+        if top_buy:
+            lines.append("\nTOP ACCUMULATE (BUY STOCK, lowest RSI):")
+            for t in top_buy:
+                lines.append(_fmt(t))
+        context_parts.append("\n".join(lines))
 
     from dashboard.gemini_prompt import SYSTEM_PROMPT
     system_prompt = SYSTEM_PROMPT

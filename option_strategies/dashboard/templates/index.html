@@ -1262,10 +1262,19 @@ async function sendChat() {
     const typingId = appendChatMsg('assistant', '...');
 
     try {
-        // Pass ticker scan data directly so Gemini always has context
+        // Pass ticker + all scan data so Gemini can compare across tickers
         let tickerData = null;
-        if (selectedTicker && scanData) {
-            tickerData = scanData.tickers.find(x => x.ticker === selectedTicker);
+        let allTickers = null;
+        if (scanData && scanData.tickers) {
+            if (selectedTicker) tickerData = scanData.tickers.find(x => x.ticker === selectedTicker);
+            // Send compact summary of all tickers for comparison questions
+            allTickers = scanData.tickers.filter(x => !x.error).map(t => ({
+                ticker: t.ticker, price: t.price, sector: t.sector,
+                rsi_14: t.rsi_14, iv_rank: t.iv_rank, trailing_pe: t.trailing_pe,
+                pct_from_200_sma: t.pct_from_200_sma, csp_ann_roc_pct: t.csp_ann_roc_pct,
+                risk_reward: t.risk_reward, entry_action: t.entry_action,
+                pct_off_52w_high: t.pct_off_52w_high,
+            }));
         }
         const r = await fetch('/api/chat', {
             method: 'POST',
@@ -1274,6 +1283,7 @@ async function sendChat() {
                 message: msg,
                 ticker: selectedTicker,
                 ticker_data: tickerData,
+                all_tickers: allTickers,
                 history: chatHistory.slice(-10),
             }),
         });
