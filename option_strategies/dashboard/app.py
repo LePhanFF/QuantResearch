@@ -1094,21 +1094,133 @@ If Assigned: Basis ${t.get('cost_basis_if_assigned',0)} | CC ${t.get('cc_strike'
         context_parts.append("\n".join(lines))
 
     from dashboard.gemini_prompt import SYSTEM_PROMPT
-    system_prompt = SYSTEM_PROMPT
-
-    # Build Gemini messages
     from google import genai
 
     client = genai.Client(api_key=GEMINI_API_KEY)
 
+    # ── Define tools Gemini can call ──
+    def get_scan_summary():
+        """Get summary of all 80 tickers with signals, RSI, IVR, ROC. Use this to find the best opportunities or compare tickers."""
+        scan = _latest_scan or _load_latest_from_disk()
+        if not scan:
+            return "No scan data available. Ask user to run a scan."
+        tickers = [t for t in scan.get("tickers", []) if "error" not in t]
+        lines = []
+        for t in sorted(tickers, key=lambda x: x.get("csp_ann_roc_pct", 0), reverse=True):
+            lines.append(
+                f"{t.get('ticker','?'):>5} ${t.get('price',0):>8.2f} "
+                f"RSI:{t.get('rsi_14',0):>3.0f} IVR:{t.get('iv_rank',0):>3.0f} "
+                f"P/E:{str(t.get('trailing_pe','N/A')):>5} "
+                f"vs200:{t.get('pct_from_200_sma',0):>+5.1f}% "
+                f"ROC:{t.get('csp_ann_roc_pct',0):>5.1f}% "
+                f"R/R:{t.get('risk_reward','?')} "
+                f"-> {t.get('entry_action','?')}"
+            )
+        return "\n".join(lines)
+
+    def get_ticker_detail(ticker: str):
+        """Get detailed analysis for a specific ticker including price, RSI, IVR, P/E, trend, CSP/CC setup."""
+        scan = _latest_scan or _load_latest_from_disk()
+        if not scan:
+            return "No scan data. Ask user to run a scan."
+        t = next((x for x in scan.get("tickers", []) if x.get("ticker", "").upper() == ticker.upper()), None)
+        if not t:
+            return f"Ticker {ticker} not found in scan."
+        return (
+            f"TICKER: {t.get('ticker')} - {t.get('name','')}\n"
+            f"Price: ${t.get('price',0):.2f} ({t.get('day_change_pct',0):+.1f}% today)\n"
+            f"RSI-14: {t.get('rsi_14',0):.0f} | IV Rank: {t.get('iv_rank',0):.0f}/100 | Trend: {t.get('trend','')}\n"
+            f"vs 200 SMA: {t.get('pct_from_200_sma',0):+.1f}% | vs 50 SMA: {t.get('pct_from_50_sma',0):+.1f}%\n"
+            f"Off 52w High: {t.get('pct_off_52w_high',0):.1f}% | 6w Return: {t.get('return_6w_pct',0):+.1f}%\n"
+            f"6w Max DD: {t.get('max_dd_6w_pct',0):.1f}%\n"
+            f"P/E: {t.get('trailing_pe','N/A')} (fwd {t.get('forward_pe','N/A')}) | Beta: {t.get('beta','N/A')}\n"
+            f"Analyst Target: ${t.get('target_price','N/A')} ({t.get('upside_to_target_pct','N/A')}% upside)\n"
+            f"Risk/Reward: {t.get('risk_reward','N/A')} | Signal: {t.get('entry_action','')}\n"
+            f"Reason: {t.get('entry_reason','')}\n"
+            f"CSP: Strike ${t.get('csp_strike',0)} | Prem ${t.get('csp_premium',0)} | "
+            f"Delta {t.get('csp_delta',0)} | Ann ROC {t.get('csp_ann_roc_pct',0)}%\n"
+            f"Capital: ${t.get('csp_capital_required',0):,.0f}\n"
+            f"If Assigned: Basis ${t.get('cost_basis_if_assigned',0)} | "
+            f"CC ${t.get('cc_strike',0)} @ ${t.get('cc_premium',0)}"
+        )
+
+    def get_sector_heatmap():
+        """Get sector-level analysis: which sectors are oversold/overbought, avg IVR, RSI, signals."""
+        scan = _latest_scan or _load_latest_from_disk()
+        if not scan:
+            return "No scan data."
+        tickers = [t for t in scan.get("tickers", []) if "error" not in t]
+        sectors = {}
+        for t in tickers:
+            sec = t.get("sector", "Other")
+            if sec not in sectors:
+                sectors[sec] = {"ivr": [], "rsi": [], "actions": []}
+            sectors[sec]["ivr"].append(t.get("iv_rank", 0))
+            sectors[sec]["rsi"].append(t.get("rsi_14", 50))
+            sectors[sec]["actions"].append(t.get("entry_action", ""))
+        lines = []
+        for sec in sorted(sectors, key=lambda s: sum(sectors[s]["ivr"])/len(sectors[s]["ivr"]), reverse=True):
+            s = sectors[sec]
+            avg_ivr = sum(s["ivr"]) / len(s["ivr"])
+            avg_rsi = sum(s["rsi"]) / len(s["rsi"])
+            sp = s["actions"].count("SELL_PUT")
+            bs = s["actions"].count("BUY_STOCK")
+            health = "OVERSOLD" if avg_rsi < 35 else "OVERBOUGHT" if avg_rsi > 65 else "NEUTRAL"
+            lines.append(f"{sec}: IVR {avg_ivr:.0f} RSI {avg_rsi:.0f} {health} | {sp} sell-put {bs} buy-stock")
+        return "\n".join(lines)
+
+    def get_best_puts(max_capital: int = 100000):
+        """Find the best put-selling opportunities ranked by annualized ROC, filtered by capital."""
+        scan = _latest_scan or _load_latest_from_disk()
+        if not scan:
+            return "No scan data."
+        tickers = [t for t in scan.get("tickers", []) if "error" not in t
+                   and t.get("entry_action") == "SELL_PUT"
+                   and (t.get("csp_capital_required", 0) or 0) <= max_capital]
+        ranked = sorted(tickers, key=lambda x: x.get("csp_ann_roc_pct", 0), reverse=True)[:15]
+        lines = [f"TOP {len(ranked)} SELL PUT OPPORTUNITIES (max ${max_capital:,} capital):"]
+        for t in ranked:
+            lines.append(
+                f"{t['ticker']:>5} Strike ${t.get('csp_strike',0):>7.2f} "
+                f"Prem ${t.get('csp_premium',0):>5.2f} "
+                f"ROC {t.get('csp_ann_roc_pct',0):>5.1f}% "
+                f"RSI:{t.get('rsi_14',0):>3.0f} IVR:{t.get('iv_rank',0):>3.0f} "
+                f"R/R:{t.get('risk_reward','?')} "
+                f"Capital ${t.get('csp_capital_required',0):>7,.0f}"
+            )
+        return "\n".join(lines)
+
+    def get_best_buys():
+        """Find the best stocks to accumulate (buy outright), ranked by oversold + value."""
+        scan = _latest_scan or _load_latest_from_disk()
+        if not scan:
+            return "No scan data."
+        tickers = [t for t in scan.get("tickers", []) if "error" not in t
+                   and t.get("entry_action") == "BUY_STOCK"]
+        ranked = sorted(tickers, key=lambda x: x.get("rsi_14", 50))[:10]
+        lines = ["TOP BUY STOCK / ACCUMULATE:"]
+        for t in ranked:
+            lines.append(
+                f"{t['ticker']:>5} ${t.get('price',0):>8.2f} "
+                f"RSI:{t.get('rsi_14',0):>3.0f} IVR:{t.get('iv_rank',0):>3.0f} "
+                f"P/E:{str(t.get('trailing_pe','N/A')):>5} "
+                f"vs200:{t.get('pct_from_200_sma',0):>+5.1f}% "
+                f"off52w:{t.get('pct_off_52w_high',0):>5.1f}%"
+            )
+        return "\n".join(lines)
+
+    tools = [get_scan_summary, get_ticker_detail, get_sector_heatmap,
+             get_best_puts, get_best_buys]
+
+    # ── Build conversation ──
     contents = []
-    for h in history[-10:]:  # last 10 messages for context window
+    for h in history[-10:]:
         contents.append(genai.types.Content(
             role=h["role"],
             parts=[genai.types.Part(text=h["text"])],
         ))
 
-    # Add current message with context
+    # Include selected ticker context directly in the user message
     user_text = message
     if context_parts:
         user_text = "\n\n".join(context_parts) + "\n\nUser question: " + message
@@ -1119,16 +1231,52 @@ If Assigned: Basis ${t.get('cost_basis_if_assigned',0)} | CC ${t.get('cc_strike'
     ))
 
     try:
+        # Agent loop: let Gemini call tools up to 3 times
+        config = genai.types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            temperature=0.5,
+            max_output_tokens=2048,
+            tools=tools,
+        )
+
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=contents,
-            config=genai.types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                temperature=0.5,
-                max_output_tokens=2048,
-            ),
+            config=config,
         )
-        reply = response.text
+
+        # Handle function calls in a loop
+        for _ in range(3):  # max 3 tool calls
+            if not response.function_calls:
+                break
+            # Execute each function call
+            func_responses = []
+            for fc in response.function_calls:
+                fn = {f.__name__: f for f in tools}.get(fc.name)
+                if fn:
+                    try:
+                        result = fn(**fc.args) if fc.args else fn()
+                    except Exception as e:
+                        result = f"Error: {e}"
+                else:
+                    result = f"Unknown function: {fc.name}"
+                func_responses.append(genai.types.Part.from_function_response(
+                    name=fc.name, response={"result": result}
+                ))
+
+            # Send function results back
+            contents.append(response.candidates[0].content)
+            contents.append(genai.types.Content(
+                role="user",
+                parts=func_responses,
+            ))
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=contents,
+                config=config,
+            )
+
+        reply = response.text or "No response from Gemini."
     except Exception as e:
         reply = f"Gemini error: {str(e)}"
 
