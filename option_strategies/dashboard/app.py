@@ -503,36 +503,68 @@ async def api_options(ticker: str, expiry: str | None = None):
     expirations = list(t.options) if t.options else []
 
     if not expiry:
-        # Find best expiry (30-45 DTE sweet spot)
         from datetime import datetime as _dt
+        import pandas as pd
         today = _dt.now()
+
+        # Get next earnings date
+        next_earnings = None
+        days_to_earnings = None
+        try:
+            ed = t.earnings_dates
+            if ed is not None and len(ed) > 0:
+                for dt_idx in ed.index:
+                    try:
+                        edt = pd.Timestamp(dt_idx).tz_localize(None)
+                    except Exception:
+                        edt = pd.Timestamp(dt_idx)
+                    dte_earn = (edt - pd.Timestamp(today)).days
+                    if dte_earn >= 0:
+                        if next_earnings is None or dte_earn < days_to_earnings:
+                            next_earnings = edt.strftime("%Y-%m-%d")
+                            days_to_earnings = dte_earn
+        except Exception:
+            pass
+
+        # Find best expiry (30-45 DTE sweet spot)
         best_expiry = None
         best_dte = None
+        exp_details = []
         for exp in expirations:
             try:
                 exp_date = _dt.strptime(exp, "%Y-%m-%d")
                 dte = (exp_date - today).days
+                has_earnings = False
+                if next_earnings:
+                    earn_date = _dt.strptime(next_earnings, "%Y-%m-%d")
+                    has_earnings = earn_date <= exp_date
+                exp_details.append({
+                    "expiry": exp,
+                    "dte": dte,
+                    "has_earnings": has_earnings,
+                })
                 if 28 <= dte <= 50:
                     if best_dte is None or abs(dte - 35) < abs(best_dte - 35):
                         best_expiry = exp
                         best_dte = dte
             except Exception:
-                continue
-        # Fallback: closest to 35 DTE if none in range
+                exp_details.append({"expiry": exp, "dte": None, "has_earnings": False})
+        # Fallback
         if not best_expiry and expirations:
-            for exp in expirations:
-                try:
-                    dte = (_dt.strptime(exp, "%Y-%m-%d") - today).days
-                    if dte > 7 and (best_dte is None or abs(dte - 35) < abs(best_dte - 35)):
-                        best_expiry = exp
-                        best_dte = dte
-                except Exception:
-                    continue
+            for ed in exp_details:
+                dte = ed.get("dte")
+                if dte and dte > 7 and (best_dte is None or abs(dte - 35) < abs(best_dte - 35)):
+                    best_expiry = ed["expiry"]
+                    best_dte = dte
+
         return JSONResponse({
             "ticker": ticker,
-            "expirations": expirations,
+            "expirations": [e["expiry"] for e in exp_details],
+            "expiry_details": exp_details,
             "recommended_expiry": best_expiry,
             "recommended_dte": best_dte,
+            "next_earnings": next_earnings,
+            "days_to_earnings": days_to_earnings,
         })
 
     if expiry not in expirations:

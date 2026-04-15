@@ -711,9 +711,21 @@ async function loadExpirations(ticker) {
         }
         const recExp = d.recommended_expiry;
         const recDte = d.recommended_dte;
-        sel.innerHTML = d.expirations.slice(0, 12).map(e => {
+        const details = d.expiry_details || [];
+        const daysToEarn = d.days_to_earnings;
+        const nextEarn = d.next_earnings;
+        // Build detail map
+        const detailMap = {};
+        details.forEach(x => detailMap[x.expiry] = x);
+
+        sel.innerHTML = (d.expirations || []).slice(0, 14).map(e => {
+            const det = detailMap[e] || {};
             const isRec = e === recExp;
-            return `<option value="${e}" ${isRec?'selected':''}>${e}${isRec?' ('+recDte+'d rec)':''}</option>`;
+            const dte = det.dte != null ? det.dte + 'd' : '';
+            let label = `${e} (${dte})`;
+            if (isRec) label += ' rec';
+            if (det.has_earnings) label += ` EARNINGS in ${daysToEarn}d`;
+            return `<option value="${e}" ${isRec?'selected':''}>${label}</option>`;
         }).join('');
         loadChain();
     } catch(e) {
